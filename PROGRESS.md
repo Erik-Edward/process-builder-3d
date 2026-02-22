@@ -287,28 +287,58 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - `mol_sieve_dryer`: zeolitbädd med isolering, grön statusindikatoring, N₂-regenerering
 - Uppdaterade PROGRESS.md och CLAUDE.md
 
+### Session 6 – Produktplan och Steg 1: Spara/ladda processer
+- **PRODUCT_PLAN.md:** Kommersiell produktplan — tre driftsättningsvarianter (Electron, Docker, SaaS),
+  licensmodell (engångslicens + underhållsavtal), prisintervall, roadmap och go-to-market
+- **Spara-modal:** Namngivna sparslots i localStorage, lista befintliga sparar med datum/statistik,
+  tvåstegs-överskrivningsskydd, radering direkt i modalen
+- **Ladda-modal:** Lista alla sparade processer med Ladda/Ta-bort-knappar, bakåtkompatibilitet
+  med gammalt enkelt sparformat (automatisk migration)
+- **Export till JSON-fil:** Laddar ned nuvarande arbetsyta som `.json`-fil (för delning och backup)
+- **Import från JSON-fil:** Läser `.json`-fil från disk och återställer processen
+- Refaktorerat: `serializeCanvas()` och `restoreCanvas()` som återanvändbara funktioner
+
 ---
 
 ## Planerat / Framtida Arbete
 
-### Högt prioritet
-- **Spara/ladda processer (LocalStorage):** Serialisera och återläsa hela arbetsytan
-- **Mediakompabilitetskontroll:** Varna om man kopplar ihop inkompatibla mediatyper
-  (t.ex. råolja in i en aminabsorber)
-- **Komponentetiketter i 3D:** Visa komponentnamn/tag-nummer i arbetsytan
-- **Ångturbin (fristående):** Turbin som driver generator eller pump (ej komboenhet)
+### Planerade steg (i ordning)
 
-### Medel prioritet
-- **Enkel flödessimulering (Fas 3):** Animerade flödespilar längs rör,
-  on/off-status för komponenter
-- **Temperatur-färgkodning:** Blå = kallt → röd = varmt längs rörledningar
-- **Processparametrar i egenskapspanelen:** Redigerbara flöde/tryck/temp
-- **Uppstartssekvenser:** Steg-för-steg guide för att starta upp ett system (`sequences.js`)
-- **Fler ventiltyper:** Butterfly-ventil, nålventil, membranventil
+#### Steg 1 – Spara/ladda processer ✅ KLART
+- Namngivna sparslots i localStorage (flera processer parallellt)
+- Spara-modal: namnge, lista befintliga, överskrivningsskydd
+- Ladda-modal: lista alla sparade processer med datum och raderingsknapp
+- **Exportera till JSON-fil** (download) — kritiskt för delning och säkerhetskopiering
+- **Importera JSON-fil** (upload) — öppnar sparad fil från disk
+- Bakåtkompatibilitet med gamla enkla sparformatet
 
-### Lägre prioritet
-- **Nödstopp-simulering (Fas 4):** Visa vad som händer vid ESD
-- **Felsökningsscenarier:** Presentera ett fel, låt studenten hitta orsaken
-- **Export till P&ID-standard:** Förbättra SVG-exporten med ISA-symboler
-- **Mobilstöd / touch:** Stöd för surfplattor
-- **Kategori-fix:** `heat_exchanger` har inkonsekvent kategorikodning (Värmeöverföring)
+#### Steg 2 – Komponentetiketter i 3D ✳️ NÄSTA
+- Visa taggnummer (P-101, V-201, E-301) direkt i 3D-vyn ovanför varje komponent
+- Redigerbara via egenskapspanelen
+- Exporteras med processen (sparas i JSON)
+
+#### Steg 3 – Mediakompabilitetskontroll
+- Varning (röd highlight) om inkompatibla mediatyper kopplas ihop
+  (t.ex. råolja → aminabsorber, kylvatten → rörledning märkt H₂S)
+- Grön bekräftelse vid kompatibel koppling
+- Kompabilitetstabell definieras per komponenttyp
+
+#### Steg 4 – Enkel flödessimulering
+- Animerade flödespilar längs aktiva rörledningar
+- On/off-status per komponent (dubbelklick)
+- Temperatur-/tryckfärg på rör (blå=kallt, röd=varmt)
+- Grundläggande processparametrar i egenskapspanelen
+
+#### Steg 5 – Guidade övningar / scenarion
+- Fördefinierade uppgifter: "Bygg en HDS-enhet", "Koppla kylvattensystemet"
+- Verifiering när studenten löst uppgiften rätt
+- Tips och ledtrådar vid fel
+- Bygger på `sequences.js`-infrastrukturen
+
+### Övriga framtida förbättringar
+- Fristående ångturbin (driver pump/generator)
+- Fler ventiltyper: butterfly, membran, nålventil
+- Nödstopp-simulering (Fas 4): ESD-sekvens
+- Felsökningsscenarier: presentera ett fel, låt studenten hitta orsaken
+- Förbättrad P&ID-export med ISA-symboler
+- Kategori-fix: `heat_exchanger` har inkonsekvent kategorikodning

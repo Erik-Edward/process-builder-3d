@@ -106,6 +106,49 @@
                 <div id="fault-card-list"></div>
             </div>
         </div>
+
+        <!-- Spara-modal -->
+        <div id="save-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-content save-load-modal">
+                <div class="modal-header">
+                    <h2>&#128190; Spara process</h2>
+                    <button id="btn-close-save-modal" class="modal-close-btn">&times;</button>
+                </div>
+                <p class="modal-desc">Ange ett namn och spara processen. Du kan ha flera namngivna processer parallellt.</p>
+                <div class="save-name-row">
+                    <input type="text" id="save-name-input" class="lib-search save-name-input" placeholder="Processnamn..." maxlength="60" />
+                    <button id="btn-save-confirm" class="modal-action-btn">Spara</button>
+                </div>
+                <div id="save-name-warning" class="save-name-warning" style="display:none;"></div>
+                <div class="save-section-label">Sparade processer</div>
+                <div id="save-existing-list" class="save-existing-list">
+                    <p class="save-empty-msg">Inga sparade processer än.</p>
+                </div>
+                <div class="modal-divider"></div>
+                <div class="modal-footer-actions">
+                    <button id="btn-export-json" class="modal-secondary-btn" title="Ladda ner nuvarande arbetsyta som JSON-fil">&#8595; Exportera som JSON-fil</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ladda-modal -->
+        <div id="load-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-content save-load-modal">
+                <div class="modal-header">
+                    <h2>&#128194; Ladda process</h2>
+                    <button id="btn-close-load-modal" class="modal-close-btn">&times;</button>
+                </div>
+                <p class="modal-desc">Välj en sparad process att ladda, eller importera en JSON-fil från disk.</p>
+                <div id="load-saves-list" class="save-existing-list">
+                    <p class="save-empty-msg">Inga sparade processer än. Spara en process eller importera en JSON-fil.</p>
+                </div>
+                <div class="modal-divider"></div>
+                <div class="modal-footer-actions">
+                    <button id="btn-import-json" class="modal-secondary-btn" title="Importera en process från JSON-fil">&#8593; Importera JSON-fil</button>
+                    <input type="file" id="import-json-input" accept=".json" style="display:none;" />
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>

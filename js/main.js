@@ -3211,7 +3211,22 @@
         setStatus('Alla komponenter och kopplingar borttagna');
     });
 
-    document.getElementById('btn-save').addEventListener('click', () => {
+    // =========================================================
+    // SPARA / LADDA – modal-baserat system med namngivna slots
+    // =========================================================
+    const SAVES_KEY = 'processBuilder_saves';
+
+    /** Returnerar alla sparade processer som { name: { name, savedAt, componentCount, pipeCount, data } } */
+    function getAllSaves() {
+        try {
+            return JSON.parse(localStorage.getItem(SAVES_KEY)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    /** Serialiserar nuvarande arbetsyta till ett data-objekt */
+    function serializeCanvas() {
         const compData = placedComponents.map(c => ({
             id: c.id,
             type: c.type,
@@ -3232,24 +3247,18 @@
                 teeParam: p.branchFrom.teeParam
             } : null
         }));
-        const saveData = { components: compData, pipes: pipeData };
-        localStorage.setItem('processBuilder_save', JSON.stringify(saveData));
-        setStatus(`Sparade ${compData.length} komponenter och ${pipeData.length} kopplingar`);
-    });
+        return { components: compData, pipes: pipeData };
+    }
 
-    document.getElementById('btn-load').addEventListener('click', () => {
-        const raw = localStorage.getItem('processBuilder_save');
-        if (!raw) {
-            setStatus('Ingen sparad process hittades');
-            return;
-        }
+    /** Återställer arbetsytan från ett data-objekt (components + pipes) */
+    function restoreCanvas(saveData) {
         // Stop simulation
         simulationRunning = false;
         stopSimTick();
         document.getElementById('btn-simulate').classList.remove('simulating');
         document.getElementById('btn-simulate').innerHTML = '&#9654; Simulera';
 
-        // Clear everything
+        // Clear scene
         for (const pipe of [...pipes]) {
             removeFlowParticles(pipe);
             removePipeLabel(pipe);
@@ -3264,20 +3273,17 @@
         placedComponents.length = 0;
         deselectComponent();
 
-        const saveData = JSON.parse(raw);
-
-        // Handle old save format (array of components)
+        // Handle old save format (bare array of components)
         const compItems = Array.isArray(saveData) ? saveData : saveData.components;
         const pipeItems = Array.isArray(saveData) ? [] : (saveData.pipes || []);
 
-        // Build ID mapping: old saved ID → new placed component ID
+        // Place components and build ID mapping (old id → new id)
         const idMap = {};
         for (const item of compItems) {
             const oldId = item.id;
             placeComponent(item.type, item.x, item.z, item.rotation || 0, item.customY || undefined);
             const newComp = placedComponents[placedComponents.length - 1];
             if (item.customY) newComp.customY = item.customY;
-            // Restore saved per-instance parameters
             if (item.parameters) {
                 for (const [key, param] of Object.entries(item.parameters)) {
                     if (newComp.parameters[key]) {
@@ -3285,28 +3291,20 @@
                     }
                 }
             }
-            if (oldId !== undefined) {
-                idMap[oldId] = newComp.id;
-            }
+            if (oldId !== undefined) idMap[oldId] = newComp.id;
         }
 
-        // Recreate pipes (normal first, then branches)
-        const normalPipeItems = pipeItems.filter(p => !p.branchFrom);
-        const branchPipeItems = pipeItems.filter(p => p.branchFrom);
-
-        for (const pipeItem of normalPipeItems) {
-            const fromId = idMap[pipeItem.from.componentId] || pipeItem.from.componentId;
-            const toId = idMap[pipeItem.to.componentId] || pipeItem.to.componentId;
-            const fromComp = placedComponents.find(c => c.id === fromId);
-            const toComp = placedComponents.find(c => c.id === toId);
+        // Recreate pipes (normal first, branches after)
+        for (const pipeItem of pipeItems.filter(p => !p.branchFrom)) {
+            const fromComp = placedComponents.find(c => c.id === (idMap[pipeItem.from.componentId] || pipeItem.from.componentId));
+            const toComp   = placedComponents.find(c => c.id === (idMap[pipeItem.to.componentId]   || pipeItem.to.componentId));
             if (fromComp && toComp) {
                 const wp = (pipeItem.waypoints || []).map(w => new THREE.Vector3(w.x, w.y, w.z));
                 createPipe(fromComp, pipeItem.from.portName, toComp, pipeItem.to.portName, wp, pipeItem.media || 'unknown');
             }
         }
-        for (const pipeItem of branchPipeItems) {
-            const toId = idMap[pipeItem.to.componentId] || pipeItem.to.componentId;
-            const toComp = placedComponents.find(c => c.id === toId);
+        for (const pipeItem of pipeItems.filter(p => p.branchFrom)) {
+            const toComp = placedComponents.find(c => c.id === (idMap[pipeItem.to.componentId] || pipeItem.to.componentId));
             if (toComp && pipeItem.branchFrom) {
                 const tp = pipeItem.branchFrom.teePoint;
                 const teePoint = new THREE.Vector3(tp.x, tp.y, tp.z);
@@ -3317,7 +3315,258 @@
         }
 
         deselectComponent();
-        setStatus(`Laddade ${compItems.length} komponenter och ${pipeItems.length} kopplingar`);
+        return { compCount: compItems.length, pipeCount: pipeItems.length };
+    }
+
+    // --- Spara-modal ---
+    let pendingOverwriteName = null; // används för tvåstegs-överskrivning
+
+    function openSaveModal() {
+        pendingOverwriteName = null;
+        document.getElementById('save-name-input').value = '';
+        document.getElementById('save-name-warning').style.display = 'none';
+        renderSaveExistingList();
+        document.getElementById('save-modal').style.display = 'flex';
+        document.getElementById('save-name-input').focus();
+    }
+
+    function closeSaveModal() {
+        document.getElementById('save-modal').style.display = 'none';
+        pendingOverwriteName = null;
+    }
+
+    function renderSaveExistingList() {
+        const saves = getAllSaves();
+        const names = Object.keys(saves).sort((a, b) => {
+            return new Date(saves[b].savedAt) - new Date(saves[a].savedAt);
+        });
+        const container = document.getElementById('save-existing-list');
+        if (names.length === 0) {
+            container.innerHTML = '<p class="save-empty-msg">Inga sparade processer än.</p>';
+            return;
+        }
+        container.innerHTML = names.map(name => {
+            const s = saves[name];
+            const date = new Date(s.savedAt).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+            return `<div class="save-slot" data-name="${encodeURIComponent(name)}">
+                <div class="save-slot-info">
+                    <div class="save-slot-name">${name}</div>
+                    <div class="save-slot-meta">${date} &middot; ${s.componentCount} komp &middot; ${s.pipeCount} rör</div>
+                </div>
+                <div class="save-slot-actions">
+                    <button class="modal-action-btn delete-btn save-delete-btn" data-name="${encodeURIComponent(name)}" title="Ta bort">Ta bort</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        container.querySelectorAll('.save-delete-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const name = decodeURIComponent(btn.dataset.name);
+                if (!confirm(`Ta bort "${name}"?`)) return;
+                const saves = getAllSaves();
+                delete saves[name];
+                localStorage.setItem(SAVES_KEY, JSON.stringify(saves));
+                renderSaveExistingList();
+                setStatus(`"${name}" borttagen`);
+            });
+        });
+    }
+
+    function doSave(name) {
+        name = name.trim();
+        if (!name) {
+            showSaveWarning('Ange ett namn för processen.');
+            return;
+        }
+        const saves = getAllSaves();
+
+        // Tvåstegs-överskrivning
+        if (saves[name] && pendingOverwriteName !== name) {
+            pendingOverwriteName = name;
+            showSaveWarning(`"${name}" finns redan. Klicka Spara igen för att skriva över.`);
+            // Markera den befintliga slotten
+            document.querySelectorAll('.save-slot').forEach(el => {
+                el.classList.toggle('overwrite-highlight', decodeURIComponent(el.dataset.name) === name);
+            });
+            return;
+        }
+
+        const data = serializeCanvas();
+        saves[name] = {
+            name,
+            savedAt: new Date().toISOString(),
+            componentCount: data.components.length,
+            pipeCount: data.pipes.length,
+            data
+        };
+        localStorage.setItem(SAVES_KEY, JSON.stringify(saves));
+        pendingOverwriteName = null;
+        closeSaveModal();
+        setStatus(`Sparade "${name}" — ${data.components.length} komp, ${data.pipes.length} rör`);
+    }
+
+    function showSaveWarning(msg) {
+        const el = document.getElementById('save-name-warning');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    document.getElementById('btn-save').addEventListener('click', openSaveModal);
+    document.getElementById('btn-close-save-modal').addEventListener('click', closeSaveModal);
+    document.getElementById('save-modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('save-modal')) closeSaveModal();
+    });
+
+    document.getElementById('save-name-input').addEventListener('input', () => {
+        document.getElementById('save-name-warning').style.display = 'none';
+        pendingOverwriteName = null;
+        document.querySelectorAll('.save-slot').forEach(el => el.classList.remove('overwrite-highlight'));
+    });
+
+    document.getElementById('save-name-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') doSave(document.getElementById('save-name-input').value);
+    });
+
+    document.getElementById('btn-save-confirm').addEventListener('click', () => {
+        doSave(document.getElementById('save-name-input').value);
+    });
+
+    // --- Export till JSON-fil ---
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+        const data = serializeCanvas();
+        const json = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), ...data }, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const filename = (document.getElementById('save-name-input').value.trim() || 'process') + '.json';
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        setStatus(`Exporterade ${data.components.length} komp och ${data.pipes.length} rör till ${filename}`);
+    });
+
+    // --- Ladda-modal ---
+    function openLoadModal() {
+        renderLoadSavesList();
+        document.getElementById('load-modal').style.display = 'flex';
+    }
+
+    function closeLoadModal() {
+        document.getElementById('load-modal').style.display = 'none';
+    }
+
+    function renderLoadSavesList() {
+        const saves = getAllSaves();
+        // Bakåtkompatibilitet: migrera gammalt enkelt sparformat
+        const legacyRaw = localStorage.getItem('processBuilder_save');
+        const names = Object.keys(saves).sort((a, b) => new Date(saves[b].savedAt) - new Date(saves[a].savedAt));
+        const container = document.getElementById('load-saves-list');
+
+        let html = '';
+        if (names.length === 0 && !legacyRaw) {
+            container.innerHTML = '<p class="save-empty-msg">Inga sparade processer än. Spara en process eller importera en JSON-fil.</p>';
+            return;
+        }
+
+        // Gammalt enkelt format om det finns
+        if (legacyRaw) {
+            html += `<div class="save-slot" style="border-color:#f59e42;">
+                <div class="save-slot-info">
+                    <div class="save-slot-name">Senaste sparade (gammalt format)</div>
+                    <div class="save-slot-meta">Importeras och konverteras till nytt format</div>
+                </div>
+                <div class="save-slot-actions">
+                    <button class="modal-action-btn load-btn" id="btn-load-legacy">Ladda</button>
+                </div>
+            </div>`;
+        }
+
+        html += names.map(name => {
+            const s = saves[name];
+            const date = new Date(s.savedAt).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+            return `<div class="save-slot">
+                <div class="save-slot-info">
+                    <div class="save-slot-name">${name}</div>
+                    <div class="save-slot-meta">${date} &middot; ${s.componentCount} komp &middot; ${s.pipeCount} rör</div>
+                </div>
+                <div class="save-slot-actions">
+                    <button class="modal-action-btn load-btn load-named-btn" data-name="${encodeURIComponent(name)}">Ladda</button>
+                    <button class="modal-action-btn delete-btn load-delete-btn" data-name="${encodeURIComponent(name)}" title="Ta bort">Ta bort</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        container.innerHTML = html;
+
+        // Legacy load
+        const legacyBtn = document.getElementById('btn-load-legacy');
+        if (legacyBtn) {
+            legacyBtn.addEventListener('click', () => {
+                try {
+                    const data = JSON.parse(legacyRaw);
+                    const result = restoreCanvas(data);
+                    closeLoadModal();
+                    setStatus(`Laddade legacy-process — ${result.compCount} komp, ${result.pipeCount} rör`);
+                } catch (e) {
+                    setStatus('Fel vid laddning av gammalt format');
+                }
+            });
+        }
+
+        container.querySelectorAll('.load-named-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const name = decodeURIComponent(btn.dataset.name);
+                const saves = getAllSaves();
+                if (!saves[name]) { setStatus(`"${name}" hittades inte`); return; }
+                const result = restoreCanvas(saves[name].data);
+                closeLoadModal();
+                setStatus(`Laddade "${name}" — ${result.compCount} komp, ${result.pipeCount} rör`);
+            });
+        });
+
+        container.querySelectorAll('.load-delete-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const name = decodeURIComponent(btn.dataset.name);
+                if (!confirm(`Ta bort "${name}"?`)) return;
+                const saves = getAllSaves();
+                delete saves[name];
+                localStorage.setItem(SAVES_KEY, JSON.stringify(saves));
+                renderLoadSavesList();
+                setStatus(`"${name}" borttagen`);
+            });
+        });
+    }
+
+    document.getElementById('btn-load').addEventListener('click', openLoadModal);
+    document.getElementById('btn-close-load-modal').addEventListener('click', closeLoadModal);
+    document.getElementById('load-modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('load-modal')) closeLoadModal();
+    });
+
+    // --- Importera JSON-fil ---
+    document.getElementById('btn-import-json').addEventListener('click', () => {
+        document.getElementById('import-json-input').click();
+    });
+
+    document.getElementById('import-json-input').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = evt => {
+            try {
+                const data = JSON.parse(evt.target.result);
+                const result = restoreCanvas(data);
+                closeLoadModal();
+                setStatus(`Importerade "${file.name}" — ${result.compCount} komp, ${result.pipeCount} rör`);
+            } catch (err) {
+                setStatus(`Fel vid import av ${file.name}: ${err.message}`);
+            }
+            e.target.value = ''; // återställ input för att kunna importera samma fil igen
+        };
+        reader.readAsText(file);
     });
 
     // --- Simulate button ---
