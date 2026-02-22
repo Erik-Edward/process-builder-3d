@@ -58,22 +58,23 @@ Utbildningsverktyg för studenter inom processteknik att lära sig genom att akt
 ## Filstruktur
 ```
 process-builder-3d/
-├── CLAUDE.md              # Projektinstruktioner
-├── index.html             # Huvudfil
+├── CLAUDE.md                  # Projektinstruktioner för Claude
+├── PROGRESS.md                # Detaljerad projektstatus och arbetslogg
+├── index.html                 # Huvud-HTML
 ├── css/
-│   └── styles.css         # Stilar
+│   └── styles.css             # All styling
 ├── js/
-│   ├── main.js           # Huvudlogik och Three.js setup
-│   ├── components.js     # Komponentdefinitioner
-│   ├── componentLibrary.js # Verktygspalett
-│   ├── scene.js          # 3D-scen hantering
-│   ├── connections.js    # Rör-kopplingslogik
-│   └── controls.js       # Användarinteraktion
-├── assets/
-│   └── models/           # 3D-modeller (framtida)
-├── data/
-│   └── saved-processes/  # Sparade processuppbyggnader
-└── README.md             # Projektdokumentation
+│   ├── main.js                # Appens motor: scen, kopplingar, media-modal,
+│   │                          # resolvePortDefaultMedia(), export
+│   ├── components.js          # 52 komponentdefinitioner med 3D-geometri
+│   │                          # och defaultMedia på portar
+│   ├── componentLibrary.js    # Vänster panel: flikar, sökning, kort
+│   ├── media.js               # 31 mediatyper (färg, fas, faroklass)
+│   ├── pid-export.js          # P&ID-export till SVG
+│   └── sequences.js           # Uppstartssekvenser (påbörjad)
+├── process description/       # Processbeskrivningar som referensmaterial
+└── data/
+    └── saved-processes/       # Sparade processkonfigurationer
 ```
 
 ## Användargränssnitt (UI)
@@ -123,8 +124,18 @@ process-builder-3d/
 }
 ```
 
-## Nästa steg
-1. Skapa grundläggande HTML-struktur med Three.js
-2. Implementera komponent-bibliotek UI
-3. Implementera drag-and-drop för komponenter
-4. Skapa enkel kopplingslogik
+## Aktuell Status
+Fas 1 och Fas 2 är i stort sett klara. Applikationen är fullt körbar med:
+- 52 komponenter med detaljerade 3D-modeller
+- 31 mediatyper, automatiskt mediaval på ~30 portar
+- Manuell och auto-koppling av rörledningar
+- P&ID-export (SVG)
+
+## Nästa prioriterade steg
+1. Spara/ladda processer via LocalStorage
+2. Mediakompabilitetskontroll vid koppling
+3. Komponentetiketter (tag-nummer) i 3D-vyn
+4. Enkel flödessimulering (Fas 3)
+
+## Övrig Information
+Detaljerad projektstatus, arbetslogg och komponentöversikt finns i PROGRESS.md
