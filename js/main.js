@@ -1262,6 +1262,14 @@
         }
     }
 
+    // --- Resolve default media from port definitions ---
+    // Returns a mediaKey string if either port has defaultMedia, otherwise null.
+    function resolvePortDefaultMedia(fromComp, fromPort, toComp, toPort) {
+        const fromDef = fromComp && fromPort ? fromComp.definition.ports[fromPort] : null;
+        const toDef   = toComp   && toPort   ? toComp.definition.ports[toPort]     : null;
+        return (fromDef && fromDef.defaultMedia) || (toDef && toDef.defaultMedia) || null;
+    }
+
     // --- Media selection modal ---
     function showMediaModal() {
         return new Promise((resolve) => {
@@ -1986,10 +1994,8 @@
 
         cleanupPipeDrawing();
         resetPortHighlights();
-        setStatus('Välj media för rörledningen...');
 
-        // Show media selection, then create the pipe
-        showMediaModal().then((mediaKey) => {
+        function finalizePipe(mediaKey) {
             pushUndo();
             if (isBranch) {
                 createBranchPipe(branchFromPipeId, branchTeePoint, branchTeeParam, toComp, toPort, wpClone, mediaKey);
@@ -2000,7 +2006,16 @@
                 const mediaDef = MEDIA_DEFINITIONS[mediaKey] || MEDIA_DEFINITIONS.unknown;
                 setStatus(`Kopplat ${fromComp.definition.name}:${fromPort} → ${toComp.definition.name}:${toPort} (${mediaDef.name})`);
             }
-        });
+        }
+
+        // If either port has a default media, skip the modal
+        const autoMedia = resolvePortDefaultMedia(fromComp, fromPort, toComp, toPort);
+        if (autoMedia) {
+            finalizePipe(autoMedia);
+        } else {
+            setStatus('Välj media för rörledningen...');
+            showMediaModal().then(finalizePipe);
+        }
     }
 
     function addPipeWaypoint(point) {
@@ -2305,15 +2320,30 @@
         }
 
         if (autoConnectedPipes.length > 0) {
-            setStatus(`Placerade ${def.name} — Välj media för auto-kopplad rörledning...`);
-            // Show media modal for each auto-connected pipe sequentially
-            (async function selectMediaForAutoConnected() {
-                for (const pipe of autoConnectedPipes) {
-                    const mediaKey = await showMediaModal();
-                    updatePipeMedia(pipe, mediaKey);
+            // Apply default media immediately for ports that have it; queue rest for modal
+            const needsModal = [];
+            for (const pipe of autoConnectedPipes) {
+                const fComp = placedComponents.find(c => c.id === pipe.from.componentId);
+                const tComp = placedComponents.find(c => c.id === pipe.to.componentId);
+                const autoMedia = resolvePortDefaultMedia(fComp, pipe.from.portName, tComp, pipe.to.portName);
+                if (autoMedia) {
+                    updatePipeMedia(pipe, autoMedia);
+                } else {
+                    needsModal.push(pipe);
                 }
+            }
+            if (needsModal.length > 0) {
+                setStatus(`Placerade ${def.name} — Välj media för auto-kopplad rörledning...`);
+                (async function selectMediaForAutoConnected() {
+                    for (const pipe of needsModal) {
+                        const mediaKey = await showMediaModal();
+                        updatePipeMedia(pipe, mediaKey);
+                    }
+                    setStatus(`Placerade ${def.name} vid (${x}, ${z}) — Auto-kopplad ${autoConnectedPipes.length} port${autoConnectedPipes.length > 1 ? 'ar' : ''}`);
+                })();
+            } else {
                 setStatus(`Placerade ${def.name} vid (${x}, ${z}) — Auto-kopplad ${autoConnectedPipes.length} port${autoConnectedPipes.length > 1 ? 'ar' : ''}`);
-            })();
+            }
         } else {
             setStatus(`Placerade ${def.name} vid (${x}, ${z}) — ${rotation}°`);
         }

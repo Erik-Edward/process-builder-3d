@@ -572,7 +572,7 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             inlet:    { position: [-0.7, 0, 0],    direction: [-1, 0, 0], type: 'liquid_in' },
             outlet:   { position: [0.7, 0, 0],     direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in:  { position: [0, -0.4, 0.65], direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in:  { position: [0, -0.4, 0.65], direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:    { value: 2000, unit: 'kW',  label: 'Värmeeffekt' },
@@ -644,7 +644,7 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             inlet:    { position: [-0.7, 0, 0],    direction: [-1, 0, 0], type: 'liquid_in' },
             outlet:   { position: [0.7, 0, 0],     direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in:  { position: [0, -0.4, 0.65], direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in:  { position: [0, -0.4, 0.65], direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:    { value: 5000, unit: 'kW',  label: 'Värmeeffekt' },
@@ -723,7 +723,7 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             inlet:   { position: [-0.8, 0, 0],     direction: [-1, 0, 0], type: 'liquid_in' },
             outlet:  { position: [0.8, 0, 0],      direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in: { position: [0, -0.3, 0.45],  direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in: { position: [0, -0.3, 0.45],  direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:    { value: 3000, unit: 'kW',  label: 'Värmeeffekt' },
@@ -793,7 +793,7 @@ const COMPONENT_DEFINITIONS = {
             pass_e_out: { position: [0, 0.08, 0.75],   direction: [0, 0, 1],  type: 'liquid_out' },
             pass_f_in:  { position: [0, -0.08, -0.75], direction: [0, 0, -1], type: 'liquid_in' },
             pass_f_out: { position: [0, -0.08, 0.75],  direction: [0, 0, 1],  type: 'liquid_out' },
-            fuel_in:    { position: [0, -0.5, 0.75],   direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in:    { position: [0, -0.5, 0.75],   direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 12000, unit: 'kW',  label: 'Total värmeeffekt' },
@@ -909,7 +909,7 @@ const COMPONENT_DEFINITIONS = {
             cell1_out: { position: [-0.9, -0.1, 0],   direction: [-1, 0, 0], type: 'liquid_out' },
             cell2_in:  { position: [0.9, 0.15, 0],    direction: [1, 0, 0],  type: 'liquid_in' },
             cell2_out: { position: [0.9, -0.1, 0],    direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in:   { position: [0, -0.5, 0.5],    direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in:   { position: [0, -0.5, 0.5],    direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 5000, unit: 'kW',  label: 'Total värmeeffekt' },
@@ -1058,7 +1058,7 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             inlet:    { position: [0, 0.4, 0.55],    direction: [0, 0, 1],  type: 'liquid_in' },
             outlet:   { position: [0, -0.1, 0.55],   direction: [0, 0, 1],  type: 'liquid_out' },
-            fuel_in:  { position: [0.55, -0.4, 0],    direction: [1, 0, 0],  type: 'liquid_in' }
+            fuel_in:  { position: [0.55, -0.4, 0],    direction: [1, 0, 0],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 1500, unit: 'kW',  label: 'Värmeeffekt' },
@@ -1147,8 +1147,8 @@ const COMPONENT_DEFINITIONS = {
             pass1_out:  { position: [0.85, 0.2, 0],    direction: [1, 0, 0],  type: 'liquid_out' },
             pass2_in:   { position: [-0.85, -0.1, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
             pass2_out:  { position: [0.85, -0.1, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in_1:  { position: [0, -0.5, 0.8],    direction: [0, 0, 1],  type: 'liquid_in' },
-            fuel_in_2:  { position: [0, -0.5, -0.8],   direction: [0, 0, -1], type: 'liquid_in' }
+            fuel_in_1:  { position: [0, -0.5, 0.8],    direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' },
+            fuel_in_2:  { position: [0, -0.5, -0.8],   direction: [0, 0, -1], type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 6000, unit: 'kW',  label: 'Total värmeeffekt' },
@@ -1274,7 +1274,7 @@ const COMPONENT_DEFINITIONS = {
             pass_d_out: { position: [1.2, -0.15, 0],  direction: [1, 0, 0],  type: 'liquid_out' },
             pass_e_in:  { position: [-1.2, -0.3, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
             pass_e_out: { position: [1.2, -0.3, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in:    { position: [0, -0.55, 0.75], direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in:    { position: [0, -0.55, 0.75], direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 6500, unit: 'kW',  label: 'Total värmeeffekt' },
@@ -1414,8 +1414,8 @@ const COMPONENT_DEFINITIONS = {
             crude_out:  { position: [1.0, 0.3, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
             preheat_in: { position: [-1.0, 0.4, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
             preheat_out:{ position: [1.0, 0.6, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in:    { position: [0, -0.55, 0.78], direction: [0, 0, 1],  type: 'liquid_in' },
-            steam_in:   { position: [0.5, 0.8, 0.78], direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in:    { position: [0, -0.55, 0.78], direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' },
+            steam_in:   { position: [0.5, 0.8, 0.78], direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'steam_mp' }
         },
         parameters: {
             duty:       { value: 15000, unit: 'kW',  label: 'Värmeeffekt' },
@@ -1552,8 +1552,8 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             feed_in:    { position: [-1.0, 0.1, 0],   direction: [-1, 0, 0], type: 'liquid_in' },
             product_out:{ position: [1.0, 0.3, 0],    direction: [1, 0, 0],  type: 'liquid_out' },
-            steam_in:   { position: [-1.0, 0.4, 0],   direction: [-1, 0, 0], type: 'liquid_in' },
-            fuel_in:    { position: [0, -0.55, 0.8],   direction: [0, 0, 1],  type: 'liquid_in' }
+            steam_in:   { position: [-1.0, 0.4, 0],   direction: [-1, 0, 0], type: 'liquid_in', defaultMedia: 'steam_mp' },
+            fuel_in:    { position: [0, -0.55, 0.8],   direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 12000, unit: 'kW',   label: 'Värmeeffekt' },
@@ -1654,9 +1654,9 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             feed_in:    { position: [-1.0, -0.1, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
             product_out:{ position: [1.0, 0.2, 0],    direction: [1, 0, 0],  type: 'liquid_out' },
-            steam_in:   { position: [-1.0, 0.3, 0],   direction: [-1, 0, 0], type: 'liquid_in' },
+            steam_in:   { position: [-1.0, 0.3, 0],   direction: [-1, 0, 0], type: 'liquid_in', defaultMedia: 'steam_hp' },
             decoke_in:  { position: [0, -0.55, 0.8],   direction: [0, 0, 1],  type: 'liquid_in' },
-            fuel_in:    { position: [0, -0.55, -0.8],  direction: [0, 0, -1], type: 'liquid_in' }
+            fuel_in:    { position: [0, -0.55, -0.8],  direction: [0, 0, -1], type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 10000, unit: 'kW',  label: 'Värmeeffekt' },
@@ -1780,7 +1780,7 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             liquid_in:  { position: [-0.7, -0.15, 0], direction: [-1, 0, 0], type: 'liquid_in' },
             vapor_out:  { position: [0.7, 0.15, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in:    { position: [0, -0.4, 0.7],    direction: [0, 0, 1],  type: 'liquid_in' }
+            fuel_in:    { position: [0, -0.4, 0.7],    direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 1500, unit: 'kW',  label: 'Värmeeffekt' },
@@ -1889,9 +1889,9 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             feed_in:    { position: [-1.0, 0.2, 0],   direction: [-1, 0, 0], type: 'liquid_in' },
             syngas_out: { position: [1.0, -0.2, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            steam_in:   { position: [-1.0, -0.2, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
-            fluegas_out:{ position: [0, 1.1, 0],      direction: [0, 1, 0],  type: 'liquid_out' },
-            fuel_in:    { position: [0.5, -0.6, 0.75], direction: [0, 0, 1],  type: 'liquid_in' }
+            steam_in:   { position: [-1.0, -0.2, 0],  direction: [-1, 0, 0], type: 'liquid_in', defaultMedia: 'steam_hp' },
+            fluegas_out:{ position: [0, 1.1, 0],      direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'flue_gas' },
+            fuel_in:    { position: [0.5, -0.6, 0.75], direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' }
         },
         parameters: {
             duty:       { value: 20000, unit: 'kW',  label: 'Värmeeffekt' },
@@ -2022,9 +2022,9 @@ const COMPONENT_DEFINITIONS = {
             crude_out:   { position: [1.0, 0.3, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
             preheat_in:  { position: [-1.0, 0.4, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
             preheat_out: { position: [1.0, 0.6, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in:     { position: [0, -0.55, 0.5],  direction: [0, 0, 1],  type: 'liquid_in' },
-            steam_in:    { position: [0.5, 0.8, 0.5],  direction: [0, 0, 1],  type: 'liquid_in' },
-            flue_gas_out:{ position: [0, 1.2, 0],      direction: [0, 1, 0],  type: 'liquid_out' }
+            fuel_in:     { position: [0, -0.55, 0.5],  direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' },
+            steam_in:    { position: [0.5, 0.8, 0.5],  direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'steam_mp' },
+            flue_gas_out:{ position: [0, 1.2, 0],      direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'flue_gas' }
         },
         parameters: {
             duty:       { value: 15000, unit: 'kW',  label: 'Värmeeffekt' },
@@ -2168,9 +2168,9 @@ const COMPONENT_DEFINITIONS = {
             pass1_out:   { position: [0.85, 0.2, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
             pass2_in:    { position: [-0.85, -0.1, 0], direction: [-1, 0, 0], type: 'liquid_in' },
             pass2_out:   { position: [0.85, -0.1, 0],  direction: [1, 0, 0],  type: 'liquid_out' },
-            fuel_in_1:   { position: [0, -0.5, 0.55],  direction: [0, 0, 1],  type: 'liquid_in' },
-            fuel_in_2:   { position: [0, -0.5, -0.55], direction: [0, 0, -1], type: 'liquid_in' },
-            flue_gas_out:{ position: [0, 0.82, 0],      direction: [0, 1, 0],  type: 'liquid_out' }
+            fuel_in_1:   { position: [0, -0.5, 0.55],  direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' },
+            fuel_in_2:   { position: [0, -0.5, -0.55], direction: [0, 0, -1], type: 'liquid_in', defaultMedia: 'fuel_gas' },
+            flue_gas_out:{ position: [0, 0.82, 0],      direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'flue_gas' }
         },
         parameters: {
             duty:       { value: 6000, unit: 'kW',  label: 'Total värmeeffekt' },
@@ -2284,10 +2284,10 @@ const COMPONENT_DEFINITIONS = {
         ports: {
             feed_in:     { position: [-1.0, -0.1, 0], direction: [-1, 0, 0], type: 'liquid_in' },
             product_out: { position: [1.0, 0.2, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            steam_in:    { position: [-1.0, 0.3, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
+            steam_in:    { position: [-1.0, 0.3, 0],  direction: [-1, 0, 0], type: 'liquid_in', defaultMedia: 'steam_hp' },
             decoke_in:   { position: [0, -0.55, 0.5],  direction: [0, 0, 1],  type: 'liquid_in' },
-            fuel_in:     { position: [0, -0.55, -0.5], direction: [0, 0, -1], type: 'liquid_in' },
-            flue_gas_out:{ position: [0, 1.0, 0],       direction: [0, 1, 0],  type: 'liquid_out' }
+            fuel_in:     { position: [0, -0.55, -0.5], direction: [0, 0, -1], type: 'liquid_in', defaultMedia: 'fuel_gas' },
+            flue_gas_out:{ position: [0, 1.0, 0],       direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'flue_gas' }
         },
         parameters: {
             duty:       { value: 10000, unit: 'kW',     label: 'Värmeeffekt' },
@@ -2422,8 +2422,8 @@ const COMPONENT_DEFINITIONS = {
             pass_e_out:  { position: [0, 0.08, 0.55],   direction: [0, 0, 1],  type: 'liquid_out' },
             pass_f_in:   { position: [0, -0.08, -0.55], direction: [0, 0, -1], type: 'liquid_in' },
             pass_f_out:  { position: [0, -0.08, 0.55],  direction: [0, 0, 1],  type: 'liquid_out' },
-            fuel_in:     { position: [0, -0.5, 0.55],   direction: [0, 0, 1],  type: 'liquid_in' },
-            flue_gas_out:{ position: [0, 0.8, 0],        direction: [0, 1, 0],  type: 'liquid_out' }
+            fuel_in:     { position: [0, -0.5, 0.55],   direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'fuel_gas' },
+            flue_gas_out:{ position: [0, 0.8, 0],        direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'flue_gas' }
         },
         parameters: {
             duty:       { value: 12000, unit: 'kW',  label: 'Total värmeeffekt' },
@@ -2537,10 +2537,10 @@ const COMPONENT_DEFINITIONS = {
         category: 'Ugnar',
         description: 'Gemensam industriskorsten som tar emot rökgaser från flera ugnar via breaching-kanaler. Högt drag tack vare naturlig konvektion i den höga skorstenspipan.',
         ports: {
-            gas_in_1: { position: [-0.78, -0.8, 0],   direction: [-1, 0, 0], type: 'liquid_in' },
-            gas_in_2: { position: [0.78, -0.8, 0],    direction: [1, 0, 0],  type: 'liquid_in' },
-            gas_in_3: { position: [0, -0.8, -0.78],   direction: [0, 0, -1], type: 'liquid_in' },
-            gas_in_4: { position: [0, -0.8, 0.78],    direction: [0, 0, 1],  type: 'liquid_in' }
+            gas_in_1: { position: [-0.78, -0.8, 0],   direction: [-1, 0, 0], type: 'liquid_in', defaultMedia: 'flue_gas' },
+            gas_in_2: { position: [0.78, -0.8, 0],    direction: [1, 0, 0],  type: 'liquid_in', defaultMedia: 'flue_gas' },
+            gas_in_3: { position: [0, -0.8, -0.78],   direction: [0, 0, -1], type: 'liquid_in', defaultMedia: 'flue_gas' },
+            gas_in_4: { position: [0, -0.8, 0.78],    direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'flue_gas' }
         },
         parameters: {
             height:        { value: 60,    unit: 'm',      label: 'Höjd' },
@@ -2762,9 +2762,9 @@ const COMPONENT_DEFINITIONS = {
         category: 'Kylning',
         description: 'Evaporativt kyltorn för kylvattensystem',
         ports: {
-            warm_in:    { position: [0, 0.9, 0],     direction: [0, 1, 0],   type: 'liquid_in' },
-            makeup_in:  { position: [-0.5, -0.35, 0], direction: [-1, 0, 0],  type: 'liquid_in' },
-            cool_out:   { position: [0.5, -0.4, 0],   direction: [1, 0, 0],   type: 'liquid_out' }
+            warm_in:    { position: [0, 0.9, 0],     direction: [0, 1, 0],   type: 'liquid_in', defaultMedia: 'cooling_water' },
+            makeup_in:  { position: [-0.5, -0.35, 0], direction: [-1, 0, 0],  type: 'liquid_in', defaultMedia: 'cooling_water' },
+            cool_out:   { position: [0.5, -0.4, 0],   direction: [1, 0, 0],   type: 'liquid_out', defaultMedia: 'cooling_water' }
         },
         parameters: {
             duty:     { value: 1000, unit: 'kW',  label: 'Kyleffekt' },
@@ -2885,7 +2885,7 @@ const COMPONENT_DEFINITIONS = {
         description: 'Strippkolonn för avlägsnande av lätta komponenter med ånga',
         ports: {
             feed_in:    { position: [0.45, 0, 0],   direction: [1, 0, 0],  type: 'liquid_in' },
-            steam_in:   { position: [0, -0.7, 0.4],  direction: [0, 0, 1],  type: 'liquid_in' },
+            steam_in:   { position: [0, -0.7, 0.4],  direction: [0, 0, 1],  type: 'liquid_in', defaultMedia: 'steam_lp' },
             top_out:    { position: [0, 1.0, 0],      direction: [0, 1, 0],  type: 'liquid_out' },
             bottom_out: { position: [0, -0.7, -0.4],  direction: [0, 0, -1], type: 'liquid_out' }
         },
@@ -2936,9 +2936,9 @@ const COMPONENT_DEFINITIONS = {
         description: 'Absorptionskolonn för gasrening (t.ex. aminsystem)',
         ports: {
             gas_in:     { position: [0, -0.7, 0.4],  direction: [0, 0, 1],  type: 'liquid_in' },
-            solvent_in: { position: [0, 1.0, 0],       direction: [0, 1, 0],  type: 'liquid_in' },
+            solvent_in: { position: [0, 1.0, 0],       direction: [0, 1, 0],  type: 'liquid_in', defaultMedia: 'amine_lean' },
             gas_out:    { position: [0, 1.0, 0.3],     direction: [0, 1, 0],  type: 'liquid_out' },
-            rich_out:   { position: [0.4, -0.7, 0],    direction: [1, 0, 0],  type: 'liquid_out' }
+            rich_out:   { position: [0.4, -0.7, 0],    direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'amine_rich' }
         },
         parameters: {
             stages:   { value: 15,  unit: '',     label: 'Antal steg' },
@@ -3261,7 +3261,7 @@ const COMPONENT_DEFINITIONS = {
         category: 'Säkerhet',
         description: 'Säkerhetsfackla för förbränning av övertrycksgas',
         ports: {
-            inlet: { position: [0, -0.5, 0.3], direction: [0, 0, 1], type: 'liquid_in' }
+            inlet: { position: [0, -0.5, 0.3], direction: [0, 0, 1], type: 'liquid_in', defaultMedia: 'flare_gas' }
         },
         parameters: {
             capacity: { value: 50000, unit: 'kg/h', label: 'Kapacitet' },
@@ -3846,6 +3846,826 @@ const COMPONENT_DEFINITIONS = {
                 leg.position.set(x, -0.52, 0);
                 group.add(leg);
             }
+            return group;
+        }
+    },
+
+    // --- Turbinkompressor ---
+    turbine_compressor: {
+        type: 'compressor',
+        subtype: 'turbine_driven',
+        name: 'Turbinkompressor',
+        icon: '⚙',
+        category: 'Pumpar',
+        description: 'Ångturbin-driven centrifugalkompressor. Turbinen drivs av högtrycksånga (HT-ånga) och komprimerar/recirkulerar vätgasrik gas i HDS-loopar och liknande processer.',
+        ports: {
+            steam_in:  { position: [-0.52, 0.38, 0],  direction: [0, 1, 0],   type: 'liquid_in', defaultMedia: 'steam_hp' },
+            steam_out: { position: [-0.52, -0.38, 0], direction: [0, -1, 0],  type: 'liquid_out', defaultMedia: 'steam_lp' },
+            gas_in:    { position: [0.50, 0.44, 0],   direction: [0, 1, 0],   type: 'liquid_in' },
+            gas_out:   { position: [0.85, -0.22, 0],  direction: [1, 0, 0],   type: 'liquid_out' }
+        },
+        parameters: {
+            steamFlow:    { value: 8,     unit: 't/h',    label: 'Ångförbrukning' },
+            steamPressIn: { value: 40,    unit: 'barg',   label: 'Ångtryck in' },
+            steamPressOut:{ value: 3.5,   unit: 'barg',   label: 'Ångtryck ut' },
+            gasFlow:      { value: 80000, unit: 'Nm³/h',  label: 'Gasflöde' },
+            pressureIn:   { value: 28,    unit: 'barg',   label: 'Gas in-tryck' },
+            pressureOut:  { value: 32,    unit: 'barg',   label: 'Gas ut-tryck' },
+            power:        { value: 1200,  unit: 'kW',     label: 'Axeleffekt' }
+        },
+        color: 0x1565c0,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const nMat = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            // --- Turbindel (vänster, mörkgrå) ---
+            const turbineMat = new THREE.MeshStandardMaterial({ color: 0x37474f });
+            const turbineBody = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.30, 0.30, 0.52, 20),
+                turbineMat
+            );
+            turbineBody.rotation.z = Math.PI / 2;
+            turbineBody.position.x = -0.48;
+            group.add(turbineBody);
+
+            // Turbinens ändlock
+            const tCapMat = new THREE.MeshStandardMaterial({ color: 0x455a64 });
+            for (const x of [-0.74, -0.22]) {
+                const cap = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.31, 0.31, 0.05, 20),
+                    tCapMat
+                );
+                cap.rotation.z = Math.PI / 2;
+                cap.position.x = x;
+                group.add(cap);
+            }
+
+            // Ångintag (topp)
+            const nSteamIn = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 10), nMat);
+            nSteamIn.position.set(-0.48, 0.38, 0);
+            group.add(nSteamIn);
+
+            // Ångutlopp/exhaust (botten)
+            const nSteamOut = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.22, 10), nMat);
+            nSteamOut.position.set(-0.48, -0.38, 0);
+            group.add(nSteamOut);
+
+            // Turbinens styrskenor (dekorativa)
+            const ribMat = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+            for (const x of [-0.62, -0.48, -0.34]) {
+                const rib = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.305, 0.016, 6, 20),
+                    ribMat
+                );
+                rib.rotation.y = Math.PI / 2;
+                rib.position.x = x;
+                group.add(rib);
+            }
+
+            // --- Kopplingaxel ---
+            const shaftMat = new THREE.MeshStandardMaterial({ color: 0x90a4ae });
+            const shaft = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.045, 0.045, 0.24, 10),
+                shaftMat
+            );
+            shaft.rotation.z = Math.PI / 2;
+            shaft.position.x = 0;
+            group.add(shaft);
+
+            // Kopplingsdisk
+            const coupling = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.10, 0.10, 0.06, 16),
+                new THREE.MeshStandardMaterial({ color: 0x607d8b })
+            );
+            coupling.rotation.z = Math.PI / 2;
+            coupling.position.x = 0;
+            group.add(coupling);
+
+            // --- Kompressordel (höger, blå) ---
+            const compMat = new THREE.MeshStandardMaterial({ color: this.color });
+            const compBody = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.34, 0.34, 0.52, 24),
+                compMat
+            );
+            compBody.rotation.z = Math.PI / 2;
+            compBody.position.x = 0.50;
+            group.add(compBody);
+
+            // Kompressorns finringar
+            const finMat = new THREE.MeshStandardMaterial({ color: 0x42a5f5 });
+            for (const x of [0.32, 0.50, 0.68]) {
+                const fin = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.36, 0.022, 8, 24),
+                    finMat
+                );
+                fin.rotation.y = Math.PI / 2;
+                fin.position.x = x;
+                group.add(fin);
+            }
+
+            // Kompressorns ändlock
+            const cCapMat = new THREE.MeshStandardMaterial({ color: 0x0d47a1 });
+            for (const x of [0.24, 0.76]) {
+                const cap = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.35, 0.35, 0.05, 20),
+                    cCapMat
+                );
+                cap.rotation.z = Math.PI / 2;
+                cap.position.x = x;
+                group.add(cap);
+            }
+
+            // Gassug (topp)
+            const nGasIn = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.22, 12), nMat);
+            nGasIn.position.set(0.50, 0.44, 0);
+            group.add(nGasIn);
+
+            // Gastryck-utlopp (sida, nedre höger)
+            const nGasOut = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.22, 12), nMat);
+            nGasOut.rotation.z = Math.PI / 2;
+            nGasOut.position.set(0.82, -0.22, 0);
+            group.add(nGasOut);
+
+            // Gemensam bottenplatta
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x263238 });
+            const base = new THREE.Mesh(
+                new THREE.BoxGeometry(1.35, 0.06, 0.62),
+                baseMat
+            );
+            base.position.y = -0.37;
+            group.add(base);
+
+            // Fundamentbultar (4 hörn)
+            const boltMat = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+            for (const [bx, bz] of [[-0.58, 0.26], [-0.58, -0.26], [0.58, 0.26], [0.58, -0.26]]) {
+                const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.12, 6), boltMat);
+                bolt.position.set(bx, -0.40, bz);
+                group.add(bolt);
+            }
+
+            return group;
+        }
+    },
+
+    // --- Klorabsorber ---
+    chlorine_absorber: {
+        type: 'column',
+        subtype: 'chlorine_absorber',
+        name: 'Klorabsorber',
+        icon: '⬇',
+        category: 'Kolonner',
+        description: 'Packad absorber för avskiljning av HCl och Cl₂ från processgaser. Används typiskt efter katalytisk reformering (CCR). Tvättas med NaOH-lösning.',
+        ports: {
+            gas_in:     { position: [0, -0.75, 0.28],   direction: [0, 0, 1],  type: 'liquid_in' },
+            gas_out:    { position: [0, 0.92, 0],        direction: [0, 1, 0],  type: 'liquid_out' },
+            caustic_in: { position: [-0.28, 0.65, 0],   direction: [-1, 0, 0], type: 'liquid_in' },
+            spent_out:  { position: [0.28, -0.78, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'caustic' }
+        },
+        parameters: {
+            packingHeight: { value: 3,    unit: 'm',     label: 'Packningshöjd' },
+            pressure:      { value: 25,   unit: 'barg',  label: 'Tryck' },
+            gasFlow:       { value: 5000, unit: 'Nm³/h', label: 'Gasflöde' },
+            caustConc:     { value: 10,   unit: 'vikt%', label: 'NaOH-halt' },
+            hclIn:         { value: 500,  unit: 'ppm',   label: 'HCl in' },
+            hclOut:        { value: 1,    unit: 'ppm',   label: 'HCl ut' }
+        },
+        color: 0x80cbc4,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: this.color });
+            const nMat = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            // Manteln
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.25, 0.25, 1.5, 20),
+                bodyMat
+            );
+            body.position.y = 0.05;
+            group.add(body);
+
+            // Övre hvälvt huvud
+            const topHead = new THREE.Mesh(
+                new THREE.SphereGeometry(0.25, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+                bodyMat
+            );
+            topHead.position.y = 0.80;
+            group.add(topHead);
+
+            // Undre huvud
+            const botHead = new THREE.Mesh(
+                new THREE.SphereGeometry(0.25, 20, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+                bodyMat
+            );
+            botHead.position.y = -0.70;
+            group.add(botHead);
+
+            // Packningsbädd (wireframe)
+            const packing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.22, 0.85, 12, 4, true),
+                new THREE.MeshStandardMaterial({ color: 0x4db6ac, wireframe: true })
+            );
+            packing.position.y = 0.15;
+            group.add(packing);
+
+            // Dimavskiljare (mist eliminator)
+            const mist = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.22, 0.06, 16, 2, true),
+                new THREE.MeshStandardMaterial({ color: 0xb2dfdb, wireframe: true })
+            );
+            mist.position.y = 0.63;
+            group.add(mist);
+
+            // Vätskefördelare (distributor plate)
+            const distrib = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.23, 0.23, 0.025, 16),
+                new THREE.MeshStandardMaterial({ color: 0x546e7a })
+            );
+            distrib.position.y = 0.62;
+            group.add(distrib);
+
+            // Gasintagsmunstycke (botten, sida)
+            const nGasIn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.20, 10), nMat);
+            nGasIn.rotation.x = Math.PI / 2;
+            nGasIn.position.set(0, -0.72, 0.28);
+            group.add(nGasIn);
+
+            // Gasutloppsmunstycke (topp)
+            const nGasOut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.20, 10), nMat);
+            nGasOut.position.set(0, 0.92, 0);
+            group.add(nGasOut);
+
+            // NaOH-intag (övre sida)
+            const nCausIn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.18, 10), nMat);
+            nCausIn.rotation.z = Math.PI / 2;
+            nCausIn.position.set(-0.30, 0.65, 0);
+            group.add(nCausIn);
+
+            // Förbrukad lut-utlopp (undre sida)
+            const nSpent = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.18, 10), nMat);
+            nSpent.rotation.z = Math.PI / 2;
+            nSpent.position.set(0.30, -0.76, 0);
+            group.add(nSpent);
+
+            // Stödbens (3 st)
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2;
+                const leg = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.025, 0.025, 0.35, 6),
+                    legMat
+                );
+                leg.position.set(Math.cos(angle) * 0.22, -1.00, Math.sin(angle) * 0.22);
+                group.add(leg);
+            }
+
+            // Nivåglas (sida)
+            const sight = new THREE.Mesh(
+                new THREE.BoxGeometry(0.04, 0.15, 0.04),
+                new THREE.MeshStandardMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.7 })
+            );
+            sight.position.set(0.26, -0.35, 0.05);
+            group.add(sight);
+
+            return group;
+        }
+    },
+
+    // --- H2S-skrubber ---
+    h2s_scrubber: {
+        type: 'vessel',
+        subtype: 'h2s_scrubber',
+        name: 'H₂S-skrubber',
+        icon: '☠',
+        category: 'Separering',
+        description: 'Kaustisk skrubber för avskiljning av H₂S och merkapaner från gasströmmar med NaOH-lösning. Kompakt enhet för slutrening. Det svarta bandet markerar H₂S-fara.',
+        ports: {
+            gas_in:     { position: [-0.28, -0.52, 0], direction: [-1, 0, 0], type: 'liquid_in' },
+            gas_out:    { position: [0, 0.84, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
+            caustic_in: { position: [0.28, 0.42, 0],   direction: [1, 0, 0],  type: 'liquid_in' },
+            spent_out:  { position: [0, -0.88, 0],      direction: [0, -1, 0], type: 'liquid_out', defaultMedia: 'caustic' }
+        },
+        parameters: {
+            pressure:  { value: 5,    unit: 'barg',  label: 'Tryck' },
+            temp:      { value: 40,   unit: '°C',    label: 'Temperatur' },
+            gasFlow:   { value: 2000, unit: 'Nm³/h', label: 'Gasflöde' },
+            caustConc: { value: 12,   unit: 'vikt%', label: 'NaOH-halt' },
+            h2sIn:     { value: 2000, unit: 'ppm',   label: 'H₂S in' },
+            h2sOut:    { value: 5,    unit: 'ppm',   label: 'H₂S ut' }
+        },
+        color: 0xf9a825,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: this.color });
+            const nMat = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            // Manteln (vertikal cylinder)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.24, 0.24, 1.4, 20),
+                bodyMat
+            );
+            group.add(body);
+
+            // Övre elliptiskt huvud
+            const topHead = new THREE.Mesh(
+                new THREE.SphereGeometry(0.24, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+                bodyMat
+            );
+            topHead.position.y = 0.70;
+            group.add(topHead);
+
+            // Undre konisk sump
+            const sump = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.09, 0.24, 0.28, 16),
+                new THREE.MeshStandardMaterial({ color: 0xe65100 })
+            );
+            sump.position.y = -0.84;
+            group.add(sump);
+
+            // Spraymunstycken (3 huvuden inne i topp)
+            const sprayMat = new THREE.MeshStandardMaterial({ color: 0x78909c });
+            for (const [sx, sz] of [[0, 0], [-0.10, 0.10], [0.10, -0.10]]) {
+                const spray = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), sprayMat);
+                spray.position.set(sx, 0.45, sz);
+                group.add(spray);
+                const arm = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.012, 0.012, 0.14, 6),
+                    sprayMat
+                );
+                arm.rotation.z = Math.PI / 2;
+                arm.position.set(sx * 0.5, 0.45, sz * 0.5);
+                group.add(arm);
+            }
+
+            // Central spraylanse
+            const sprayPipe = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.015, 0.015, 0.35, 8),
+                sprayMat
+            );
+            sprayPipe.position.y = 0.30;
+            group.add(sprayPipe);
+
+            // Dimavskiljare (topp)
+            const mist = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.21, 0.21, 0.07, 16, 2, true),
+                new THREE.MeshStandardMaterial({ color: 0x90a4ae, wireframe: true })
+            );
+            mist.position.y = 0.60;
+            group.add(mist);
+
+            // Svart faroband (H₂S-markering)
+            const hazardBand = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.245, 0.245, 0.08, 20),
+                new THREE.MeshStandardMaterial({ color: 0x212121 })
+            );
+            hazardBand.position.y = -0.25;
+            group.add(hazardBand);
+
+            // Gasintag (sida, nedre)
+            const nGasIn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.18, 10), nMat);
+            nGasIn.rotation.z = Math.PI / 2;
+            nGasIn.position.set(-0.30, -0.50, 0);
+            group.add(nGasIn);
+
+            // Gasutlopp (topp)
+            const nGasOut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.18, 10), nMat);
+            nGasOut.position.set(0, 0.84, 0);
+            group.add(nGasOut);
+
+            // NaOH-intag (övre sida)
+            const nCausIn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.18, 10), nMat);
+            nCausIn.rotation.z = Math.PI / 2;
+            nCausIn.position.set(0.30, 0.40, 0);
+            group.add(nCausIn);
+
+            // Förbrukad lut-dräning (botten)
+            const nSpent = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.18, 10), nMat);
+            nSpent.position.set(0, -0.86, 0);
+            group.add(nSpent);
+
+            // Stödben (3 st)
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2 + Math.PI / 6;
+                const leg = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.025, 0.025, 0.30, 6),
+                    legMat
+                );
+                leg.position.set(Math.cos(angle) * 0.21, -1.10, Math.sin(angle) * 0.21);
+                group.add(leg);
+            }
+
+            return group;
+        }
+    },
+
+    // --- Avluftare ---
+    deaerator: {
+        type: 'vessel',
+        subtype: 'deaerator',
+        name: 'Avluftare',
+        icon: '💧',
+        category: 'Utilities',
+        description: 'Bricka-/sprayavluftare som avlägsnar löst syre ur pannmatarvatten (BFW) med hjälp av LP-ånga. Förhindrar korrosion i ångpannor och rörledningar.',
+        ports: {
+            bfw_in:    { position: [-0.75, 0.55, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'boiler_feed_water' },
+            steam_in:  { position: [0.3, 0.35, 0.35], direction: [0, 0, 1],  type: 'liquid_in',  defaultMedia: 'steam_lp' },
+            bfw_out:   { position: [0.75, -0.35, 0],  direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'boiler_feed_water' },
+            vent_out:  { position: [0, 0.8, 0],        direction: [0, 1, 0],  type: 'liquid_out' }
+        },
+        parameters: {
+            pressure:  { value: 1.2,   unit: 'barg',  label: 'Drifttryck' },
+            temp:      { value: 120,   unit: '°C',    label: 'Drifttemperatur' },
+            o2In:      { value: 8000,  unit: 'µg/l',  label: 'O₂ in' },
+            o2Out:     { value: 7,     unit: 'µg/l',  label: 'O₂ ut' },
+            capacity:  { value: 50,    unit: 'm³/h',  label: 'Kapacitet BFW' }
+        },
+        color: 0x0288d1,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const tankMat  = new THREE.MeshStandardMaterial({ color: this.color });
+            const colMat   = new THREE.MeshStandardMaterial({ color: 0x0277bd });
+            const nMat     = new THREE.MeshStandardMaterial({ color: 0x78909c });
+            const internMat= new THREE.MeshStandardMaterial({ color: 0x4fc3f7, wireframe: true });
+
+            // Horisontell lagringsdrum (nedre del)
+            const tank = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.30, 0.30, 1.4, 24),
+                tankMat
+            );
+            tank.rotation.z = Math.PI / 2;
+            tank.position.y = -0.12;
+            group.add(tank);
+
+            // Ändlock (elliptiska)
+            const capMat = new THREE.MeshStandardMaterial({ color: 0x01579b });
+            for (const x of [-0.7, 0.7]) {
+                const cap = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.30, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+                    capMat
+                );
+                cap.rotation.z = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+                cap.position.x = x;
+                cap.position.y = -0.12;
+                group.add(cap);
+            }
+
+            // Saddelstöd
+            const saddleMat = new THREE.MeshStandardMaterial({ color: 0x455a64 });
+            for (const x of [-0.35, 0.35]) {
+                const saddle = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.08, 0.22, 0.45),
+                    saddleMat
+                );
+                saddle.position.set(x, -0.45, 0);
+                group.add(saddle);
+            }
+
+            // Vertikal brickkolumn (övre del, där avluftningen sker)
+            const col = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.18, 0.22, 0.60, 16),
+                colMat
+            );
+            col.position.set(-0.25, 0.48, 0);
+            group.add(col);
+
+            // Brickorna (wireframe skivor i kolumnen)
+            for (let i = 0; i < 3; i++) {
+                const tray = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.16, 0.16, 0.03, 16),
+                    internMat
+                );
+                tray.position.set(-0.25, 0.24 + i * 0.16, 0);
+                group.add(tray);
+            }
+
+            // Ångfördelningsrör i kolumnens botten
+            const steamDist = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.015, 0.015, 0.32, 6),
+                nMat
+            );
+            steamDist.rotation.z = Math.PI / 2;
+            steamDist.position.set(-0.25, 0.22, 0);
+            group.add(steamDist);
+
+            // Ventilationshuv på kolumntoppen
+            const hood = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.20, 0.18, 0.08, 16),
+                new THREE.MeshStandardMaterial({ color: 0x01579b })
+            );
+            hood.position.set(-0.25, 0.82, 0);
+            group.add(hood);
+
+            // Anslutningsrör kolumn → tank
+            const connector = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.12, 0.18, 10),
+                colMat
+            );
+            connector.position.set(-0.25, 0.09, 0);
+            group.add(connector);
+
+            // Munstycken
+            // BFW-intag (vänster sida av kolumn)
+            const nBfwIn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.20, 10), nMat);
+            nBfwIn.rotation.z = Math.PI / 2;
+            nBfwIn.position.set(-0.68, 0.55, 0);
+            group.add(nBfwIn);
+
+            // Ångintag (fram, nedre kolumn)
+            const nSteam = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.18, 10), nMat);
+            nSteam.rotation.x = Math.PI / 2;
+            nSteam.position.set(0.3, 0.35, 0.35);
+            group.add(nSteam);
+
+            // Avluftad BFW-utlopp (höger tank)
+            const nBfwOut = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.20, 10), nMat);
+            nBfwOut.rotation.z = Math.PI / 2;
+            nBfwOut.position.set(0.68, -0.35, 0);
+            group.add(nBfwOut);
+
+            // Ventilationsstuts (topp av kolumn)
+            const nVent = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.16, 8), nMat);
+            nVent.position.set(0, 0.82, 0);
+            group.add(nVent);
+
+            // Nivåglas (sida av tank)
+            const sight = new THREE.Mesh(
+                new THREE.BoxGeometry(0.04, 0.22, 0.04),
+                new THREE.MeshStandardMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.7 })
+            );
+            sight.position.set(0.12, -0.22, 0.31);
+            group.add(sight);
+
+            return group;
+        }
+    },
+
+    // --- Desalter ---
+    desalter: {
+        type: 'vessel',
+        subtype: 'desalter',
+        name: 'Desalter',
+        icon: '⚡',
+        category: 'Separering',
+        description: 'Elektrostatisk råoljedesalter. Råoljan blandas med tvättvatten och passerar ett högspänningsfält (~24 kV) som koalescerar saltlaksdroppar. Minskar salthalt från ~50 PTB till <2 PTB.',
+        ports: {
+            crude_in:  { position: [-0.85, 0.10, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'crude_oil' },
+            crude_out: { position: [0.85, 0.10, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'crude_oil' },
+            water_in:  { position: [-0.5, -0.30, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'process_water' },
+            brine_out: { position: [0.5, -0.30, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'sour_water' }
+        },
+        parameters: {
+            voltage:   { value: 24,  unit: 'kV',   label: 'Elektrodspänning' },
+            temp:      { value: 130, unit: '°C',   label: 'Temperatur' },
+            pressure:  { value: 8,   unit: 'barg', label: 'Tryck' },
+            saltIn:    { value: 50,  unit: 'PTB',  label: 'Salthalt in' },
+            saltOut:   { value: 2,   unit: 'PTB',  label: 'Salthalt ut' },
+            washRatio: { value: 5,   unit: 'vol%', label: 'Tvättvattenkvot' }
+        },
+        color: 0x5d4037,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const bodyMat    = new THREE.MeshStandardMaterial({ color: this.color });
+            const elecMat    = new THREE.MeshStandardMaterial({ color: 0xffca28 });
+            const insulMat   = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const nMat       = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            // Horisontell tryckkärla (stor)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.32, 0.32, 1.55, 24),
+                bodyMat
+            );
+            body.rotation.z = Math.PI / 2;
+            group.add(body);
+
+            // Ändlock
+            const capMat = new THREE.MeshStandardMaterial({ color: 0x4e342e });
+            for (const x of [-0.78, 0.78]) {
+                const cap = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.32, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+                    capMat
+                );
+                cap.rotation.z = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+                cap.position.x = x;
+                group.add(cap);
+            }
+
+            // Saddelstöd
+            const saddleMat = new THREE.MeshStandardMaterial({ color: 0x37474f });
+            for (const x of [-0.40, 0.40]) {
+                const saddle = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.09, 0.28, 0.52),
+                    saddleMat
+                );
+                saddle.position.set(x, -0.42, 0);
+                group.add(saddle);
+            }
+
+            // Elektriska isolatorer (genomföringar på toppen, karakteristiskt för desalter)
+            for (const x of [-0.45, 0, 0.45]) {
+                // Isolatorkropp (vit porslinssymbol)
+                const insul = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.06, 0.08, 0.18, 12),
+                    insulMat
+                );
+                insul.position.set(x, 0.42, 0);
+                group.add(insul);
+
+                // Isolatorskivor (flanges)
+                for (const dy of [0, 0.06, 0.12]) {
+                    const disc = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.10, 0.10, 0.025, 12),
+                        insulMat
+                    );
+                    disc.position.set(x, 0.34 + dy, 0);
+                    group.add(disc);
+                }
+
+                // Elektrodstav (gul, sträcker sig ner i kärlet)
+                const rod = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.012, 0.012, 0.50, 6),
+                    elecMat
+                );
+                rod.position.set(x, 0.14, 0);
+                group.add(rod);
+            }
+
+            // HV-kabel (förbinder isolatorerna längs toppen)
+            const cableMat = new THREE.MeshStandardMaterial({ color: 0x212121 });
+            const cable = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.015, 0.015, 0.90, 6),
+                cableMat
+            );
+            cable.rotation.z = Math.PI / 2;
+            cable.position.set(0, 0.50, 0);
+            group.add(cable);
+
+            // HV-transformatorbox (på sidan)
+            const transBox = new THREE.Mesh(
+                new THREE.BoxGeometry(0.18, 0.22, 0.14),
+                new THREE.MeshStandardMaterial({ color: 0x263238 })
+            );
+            transBox.position.set(0, 0.45, 0.38);
+            group.add(transBox);
+
+            // Råolje-intag (vänster, övre)
+            const nCrIn = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 10), nMat);
+            nCrIn.rotation.z = Math.PI / 2;
+            nCrIn.position.set(-0.78, 0.10, 0);
+            group.add(nCrIn);
+
+            // Råolje-utlopp (höger, övre)
+            const nCrOut = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 10), nMat);
+            nCrOut.rotation.z = Math.PI / 2;
+            nCrOut.position.set(0.78, 0.10, 0);
+            group.add(nCrOut);
+
+            // Tvättvatten-intag (vänster, undre)
+            const nWIn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.18, 10), nMat);
+            nWIn.rotation.z = Math.PI / 2;
+            nWIn.position.set(-0.45, -0.28, 0);
+            group.add(nWIn);
+
+            // Saltlake-utlopp (höger, undre)
+            const nBrine = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.18, 10), nMat);
+            nBrine.rotation.z = Math.PI / 2;
+            nBrine.position.set(0.45, -0.28, 0);
+            group.add(nBrine);
+
+            return group;
+        }
+    },
+
+    // --- Molekylsikt-tork ---
+    mol_sieve_dryer: {
+        type: 'vessel',
+        subtype: 'mol_sieve',
+        name: 'Molekylsikt-tork',
+        icon: '◈',
+        category: 'Separering',
+        description: 'Fast packad bädd med zeoliter (4A eller 13X) för djuptorkning av gas- eller vätskeströmmar. Tvåkärlesystem: ett kärl i drift, ett under regenerering med varm N₂.',
+        ports: {
+            feed_in:    { position: [0, -0.85, 0.28],  direction: [0, 0, 1],  type: 'liquid_in' },
+            dry_out:    { position: [0, 0.95, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
+            regen_in:   { position: [0.28, 0.70, 0],   direction: [1, 0, 0],  type: 'liquid_in',  defaultMedia: 'nitrogen' },
+            regen_out:  { position: [0.28, -0.70, 0],  direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'nitrogen' }
+        },
+        parameters: {
+            capacity:   { value: 5000, unit: 'Nm³/h', label: 'Gasflöde' },
+            h2oIn:      { value: 500,  unit: 'ppm',   label: 'H₂O in' },
+            h2oOut:     { value: 1,    unit: 'ppm',   label: 'H₂O ut' },
+            cycleTime:  { value: 8,    unit: 'h',     label: 'Cykeltid' },
+            regenTemp:  { value: 250,  unit: '°C',    label: 'Regentemp' },
+            bedVolume:  { value: 4,    unit: 'm³',    label: 'Bäddvolym' }
+        },
+        color: 0x78909c,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: this.color });
+            const nMat    = new THREE.MeshStandardMaterial({ color: 0x607d8b });
+            const bedMat  = new THREE.MeshStandardMaterial({ color: 0x8d6e63 });
+            const platMat = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+
+            // Manteln (vertikal cylinder)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.26, 0.26, 1.65, 20),
+                bodyMat
+            );
+            body.position.y = 0.0;
+            group.add(body);
+
+            // Övre huvud (elliptiskt)
+            const topHead = new THREE.Mesh(
+                new THREE.SphereGeometry(0.26, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+                bodyMat
+            );
+            topHead.position.y = 0.825;
+            group.add(topHead);
+
+            // Undre huvud (koniskt sump)
+            const botHead = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.10, 0.26, 0.25, 16),
+                new THREE.MeshStandardMaterial({ color: 0x607d8b })
+            );
+            botHead.position.y = -0.95;
+            group.add(botHead);
+
+            // Zeolitbädd (synlig packad lager — brun)
+            const bed = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.24, 0.24, 1.0, 16),
+                bedMat
+            );
+            bed.position.y = 0.05;
+            group.add(bed);
+
+            // Övre och undre stödgaller (sievar)
+            for (const y of [-0.45, 0.55]) {
+                const screen = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.25, 0.25, 0.04, 16),
+                    platMat
+                );
+                screen.position.y = y;
+                group.add(screen);
+            }
+
+            // Kolvsymbol: "ADSORPTION" indikator-band (mörkare ring på mitten av kärlet)
+            const stateBand = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.265, 0.265, 0.12, 20),
+                new THREE.MeshStandardMaterial({ color: 0x4caf50, emissive: 0x2e7d32, emissiveIntensity: 0.3 })
+            );
+            stateBand.position.y = 0.05;
+            group.add(stateBand);
+
+            // Yttre isolering (tunn, ljusgrå cylinder runt kärlet — regengvärme kräver isolering)
+            const insul = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.30, 0.30, 1.65, 20, 1, true),
+                new THREE.MeshStandardMaterial({ color: 0xeceff1, transparent: true, opacity: 0.25 })
+            );
+            insul.position.y = 0.0;
+            group.add(insul);
+
+            // Stödben (3 st)
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x455a64 });
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2;
+                const leg = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6),
+                    legMat
+                );
+                leg.position.set(Math.cos(angle) * 0.24, -1.17, Math.sin(angle) * 0.24);
+                group.add(leg);
+            }
+
+            // Matningsstuts (botten, sida)
+            const nFeedIn = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.20, 10), nMat);
+            nFeedIn.rotation.x = Math.PI / 2;
+            nFeedIn.position.set(0, -0.82, 0.28);
+            group.add(nFeedIn);
+
+            // Torrgas-utlopp (topp)
+            const nDryOut = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.20, 10), nMat);
+            nDryOut.position.set(0, 0.96, 0);
+            group.add(nDryOut);
+
+            // Regengas-intag (övre sida, höger)
+            const nRegIn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.18, 10), nMat);
+            nRegIn.rotation.z = Math.PI / 2;
+            nRegIn.position.set(0.30, 0.68, 0);
+            group.add(nRegIn);
+
+            // Regengas-utlopp (undre sida, höger)
+            const nRegOut = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.18, 10), nMat);
+            nRegOut.rotation.z = Math.PI / 2;
+            nRegOut.position.set(0.30, -0.68, 0);
+            group.add(nRegOut);
+
+            // Temperaturgivare (litet instrument på sidan)
+            const tSensor = new THREE.Mesh(
+                new THREE.BoxGeometry(0.05, 0.05, 0.05),
+                new THREE.MeshStandardMaterial({ color: 0xff9800 })
+            );
+            tSensor.position.set(-0.28, 0.25, 0.10);
+            group.add(tSensor);
+
             return group;
         }
     }
