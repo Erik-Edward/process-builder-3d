@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Builder 3D</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://unpkg.com">
+</head>
+<body>
+    <header id="toolbar">
+        <div class="toolbar-left">
+            <h1>Process Builder 3D</h1>
+        </div>
+        <div class="toolbar-actions">
+            <button id="btn-save" title="Spara process">&#128190; Spara</button>
+            <button id="btn-load" title="Ladda process">&#128194; Ladda</button>
+            <button id="btn-move" title="Flytta vald komponent (M)">&#8693; Flytta</button>
+            <button id="btn-rotate" title="Rotera vald komponent (R)">&#8635; Rotera</button>
+            <button id="btn-delete" title="Ta bort vald komponent (Delete)">&#128465; Ta bort</button>
+            <button id="btn-clear" title="Rensa allt">&#128260; Rensa</button>
+            <button id="btn-undo" title="Ångra (Ctrl+Z)" disabled>&#8617; Ångra</button>
+            <button id="btn-redo" title="Gör om (Ctrl+Y)" disabled>&#8618; Gör om</button>
+            <button id="btn-simulate" title="Starta/Stoppa simulering">&#9654; Simulera</button>
+            <button id="btn-sequences" title="Uppstartssekvenser">&#128218; Sekvenser</button>
+            <button id="btn-faults" title="Felsökningsscenarier">&#128295; Felsökning</button>
+            <button id="btn-export-pid" title="Exportera P&ID-diagram (SVG)">&#128203; P&amp;ID</button>
+            <button id="btn-emergency" class="emergency-btn" title="Nödstopp (Space)">&#9888; NÖDSTOPP</button>
+        </div>
+    </header>
+
+    <main id="app">
+        <aside id="library-panel">
+            <!-- Built dynamically by componentLibrary.js -->
+        </aside>
+
+        <div id="viewport">
+            <canvas id="three-canvas"></canvas>
+            <div id="status-bar">Klicka på en komponent i biblioteket och sedan i 3D-vyn för att placera</div>
+            <!-- Sekvens-panel (steg under körning) -->
+            <div id="sequence-panel" style="display:none;">
+                <div class="seq-panel-header">
+                    <span id="seq-panel-title">Sekvens</span>
+                    <button id="btn-cancel-sequence" class="seq-cancel-btn">&times;</button>
+                </div>
+                <div id="seq-progress-bar"><div id="seq-progress-fill"></div></div>
+                <div id="seq-step-info">
+                    <div id="seq-step-label" class="seq-step-label">Steg 1/5</div>
+                    <div id="seq-step-instruction" class="seq-step-instruction"></div>
+                    <div id="seq-step-detail" class="seq-step-detail"></div>
+                </div>
+                <div id="seq-step-status" class="seq-step-status"></div>
+                <button id="seq-hint-btn" class="seq-hint-btn" style="display:none;">💡 Visa tips</button>
+            </div>
+        </div>
+
+        <aside id="properties-panel">
+            <h2>Egenskaper</h2>
+            <div id="properties-content">
+                <p class="placeholder-text">Välj en komponent för att se egenskaper</p>
+            </div>
+        </aside>
+        <!-- Nödstopp overlay -->
+        <div id="emergency-overlay" class="modal-overlay" style="display:none;">
+            <div class="emergency-content">
+                <div class="emergency-icon">&#9888;</div>
+                <h2>NÖDSTOPP AKTIVERAT</h2>
+                <p>All simulering har stoppats. Alla komponenter är avstängda.</p>
+                <button id="btn-emergency-reset" class="emergency-reset-btn">Återställ</button>
+            </div>
+        </div>
+
+        <!-- Sekvens-modal (välj sekvens) -->
+        <div id="sequence-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Uppstartssekvenser</h2>
+                    <button id="btn-close-seq-modal" class="modal-close-btn">&times;</button>
+                </div>
+                <p class="modal-desc">Välj en sekvens för att få steg-för-steg guide genom uppstarten.</p>
+                <div id="sequence-card-list"></div>
+            </div>
+        </div>
+
+        <!-- Media-val modal -->
+        <div id="media-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Välj media</h2>
+                    <button id="btn-close-media-modal" class="modal-close-btn">&times;</button>
+                </div>
+                <p class="modal-desc">Välj vilken media/produkt som flödar genom rörledningen.</p>
+                <input type="text" id="media-search" class="lib-search" placeholder="Sök media..." style="margin-bottom:12px;" />
+                <div id="media-card-list"></div>
+            </div>
+        </div>
+
+        <!-- Felsöknings-modal -->
+        <div id="fault-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Felsökningsscenarier</h2>
+                    <button id="btn-close-fault-modal" class="modal-close-btn">&times;</button>
+                </div>
+                <p class="modal-desc">Välj ett scenario för att öva på att diagnostisera och åtgärda processfel.</p>
+                <div id="fault-card-list"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script src="js/media.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/componentLibrary.js"></script>
+    <script src="js/sequences.js"></script>
+    <script src="js/pid-export.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
