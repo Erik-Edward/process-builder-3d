@@ -298,6 +298,15 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Import från JSON-fil:** Läser `.json`-fil från disk och återställer processen
 - Refaktorerat: `serializeCanvas()` och `restoreCanvas()` som återanvändbara funktioner
 
+### Session 6 (fortsättning) – Steg 2: Komponentetiketter i 3D
+- **Taggnummer-fält** i egenskapspanelen (type="text", monospace, placeholder "P-101")
+- **3D-sprite-etikett** ovanför varje komponent (Canvas2D → CanvasTexture → THREE.Sprite)
+  — placeras automatiskt ovanför meshens bounding box, synlig från alla kameravinklar
+- Etiketten uppdateras live medan man skriver taggnumret
+- **Synkas med flytt:** etiketten följer med i realtid under move-mode
+- **Sparas och laddas** med processen (JSON export/import + localStorage + undo/redo)
+- Städas korrekt vid: Radera komponent, Rensa allt, Ladda process, Ångra/Gör om
+
 ---
 
 ## Planerat / Framtida Arbete
@@ -312,12 +321,12 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Importera JSON-fil** (upload) — öppnar sparad fil från disk
 - Bakåtkompatibilitet med gamla enkla sparformatet
 
-#### Steg 2 – Komponentetiketter i 3D ✳️ NÄSTA
+#### Steg 2 – Komponentetiketter i 3D ✅ KLART
 - Visa taggnummer (P-101, V-201, E-301) direkt i 3D-vyn ovanför varje komponent
 - Redigerbara via egenskapspanelen
 - Exporteras med processen (sparas i JSON)
 
-#### Steg 3 – Mediakompabilitetskontroll
+#### Steg 3 – Mediakompabilitetskontroll ✳️ NÄSTA
 - Varning (röd highlight) om inkompatibla mediatyper kopplas ihop
   (t.ex. råolja → aminabsorber, kylvatten → rörledning märkt H₂S)
 - Grön bekräftelse vid kompatibel koppling

@@ -341,6 +341,7 @@
             if (pt) {
                 movingComponent.mesh.position.x = pt.x;
                 movingComponent.mesh.position.z = pt.z;
+                updateComponentLabelPosition(movingComponent);
                 // Fas 2: nearby port detection during move
                 const nearby = detectNearbyPorts(
                     new THREE.Vector3(pt.x, movingComponent.mesh.position.y, pt.z),
@@ -1260,6 +1261,77 @@
             }
             pipe.label = null;
         }
+    }
+
+    // --- Component tag number label (3D sprite) ---
+    function createComponentLabel(comp) {
+        removeComponentLabel(comp);
+        const tag = (comp.tagNumber || '').trim();
+        if (!tag) return;
+
+        const canvas2d = document.createElement('canvas');
+        canvas2d.width = 256;
+        canvas2d.height = 64;
+        const ctx = canvas2d.getContext('2d');
+
+        // Rounded background
+        ctx.fillStyle = 'rgba(0, 15, 45, 0.80)';
+        ctx.beginPath();
+        const rr = 10, rw = 252, rh = 60, rx = 2, ry = 2;
+        ctx.moveTo(rx + rr, ry);
+        ctx.lineTo(rx + rw - rr, ry);
+        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rr);
+        ctx.lineTo(rx + rw, ry + rh - rr);
+        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rr, ry + rh);
+        ctx.lineTo(rx + rr, ry + rh);
+        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rr);
+        ctx.lineTo(rx, ry + rr);
+        ctx.quadraticCurveTo(rx, ry, rx + rr, ry);
+        ctx.closePath();
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = 'rgba(100, 180, 255, 0.75)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Tag number text
+        ctx.fillStyle = '#d8eeff';
+        ctx.font = 'bold 30px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tag, 128, 33);
+
+        const texture = new THREE.CanvasTexture(canvas2d);
+        texture.needsUpdate = true;
+        const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.scale.set(2.0, 0.5, 1);
+        sprite.userData.isComponentLabel = true;
+
+        updateComponentLabelSpritePosition(comp, sprite);
+        scene.add(sprite);
+        comp.tagSprite = sprite;
+    }
+
+    function removeComponentLabel(comp) {
+        if (!comp.tagSprite) return;
+        scene.remove(comp.tagSprite);
+        if (comp.tagSprite.material) {
+            if (comp.tagSprite.material.map) comp.tagSprite.material.map.dispose();
+            comp.tagSprite.material.dispose();
+        }
+        comp.tagSprite = null;
+    }
+
+    function updateComponentLabelSpritePosition(comp, sprite) {
+        const bbox = new THREE.Box3().setFromObject(comp.mesh);
+        sprite.position.set(comp.mesh.position.x, bbox.max.y + 0.6, comp.mesh.position.z);
+    }
+
+    function updateComponentLabelPosition(comp) {
+        if (!comp.tagSprite) return;
+        updateComponentLabelSpritePosition(comp, comp.tagSprite);
     }
 
     // --- Resolve default media from port definitions ---
@@ -2249,6 +2321,14 @@
         if (simulationRunning) simTick();
     };
 
+    // Expose tag number update
+    window.__updateTagNumber = function(compId, value) {
+        const comp = placedComponents.find(c => c.id === compId);
+        if (!comp) return;
+        comp.tagNumber = value.trim();
+        createComponentLabel(comp);
+    };
+
     // Expose pipe media change
     window.__changePipeMedia = function(pipeId) {
         const pipe = pipes.find(p => p.id === pipeId);
@@ -2285,7 +2365,7 @@
         mesh.castShadow = true;
 
         scene.add(mesh);
-        const comp = { id: nextId, type, mesh, definition: def, rotation, connections: [], running: false, computed: {} };
+        const comp = { id: nextId, type, mesh, definition: def, rotation, connections: [], running: false, computed: {}, tagNumber: '', tagSprite: null };
         if (customY !== undefined && customY !== null) comp.customY = customY;
         // Deep clone per-instance parameters
         comp.parameters = {};
@@ -2905,6 +2985,10 @@
         html += `
             <div class="prop-group">
                 <div class="prop-group-title">Information</div>
+                <div class="prop-row">
+                    <span class="prop-label">Taggnr</span>
+                    <span class="prop-value"><input type="text" class="prop-input prop-tag-input" value="${comp.tagNumber || ''}" placeholder="P-101" maxlength="20" oninput="window.__updateTagNumber(${comp.id}, this.value)"></span>
+                </div>
                 <div class="prop-row"><span class="prop-label">Namn</span><span class="prop-value">${def.name}</span></div>
                 <div class="prop-row"><span class="prop-label">Typ</span><span class="prop-value">${def.type}</span></div>
                 <div class="prop-row"><span class="prop-label">ID</span><span class="prop-value">${comp.id}</span></div>
@@ -2979,7 +3063,8 @@
                 customY: c.customY || null,
                 rotation: c.rotation || 0,
                 parameters: JSON.parse(JSON.stringify(c.parameters)),
-                running: c.running
+                running: c.running,
+                tagNumber: c.tagNumber || ''
             })),
             pipes: pipes.map(p => ({
                 from: { componentId: p.from.componentId, portName: p.from.portName },
@@ -3036,6 +3121,7 @@
 
         // Clear all components
         for (const comp of placedComponents) {
+            removeComponentLabel(comp);
             scene.remove(comp.mesh);
         }
         placedComponents.length = 0;
@@ -3055,6 +3141,10 @@
                 }
             }
             newComp.running = item.running;
+            if (item.tagNumber) {
+                newComp.tagNumber = item.tagNumber;
+                createComponentLabel(newComp);
+            }
         }
         restoringSnapshot = false;
 
@@ -3140,6 +3230,7 @@
         const comp = selectedPlacedComponent;
         // Remove all connected pipes first
         removeAllPipesForComponent(comp.id);
+        removeComponentLabel(comp);
         scene.remove(comp.mesh);
         const idx = placedComponents.indexOf(comp);
         if (idx >= 0) placedComponents.splice(idx, 1);
@@ -3203,6 +3294,7 @@
         document.getElementById('btn-simulate').innerHTML = '&#9654; Simulera';
         // Remove all components
         for (const comp of placedComponents) {
+            removeComponentLabel(comp);
             scene.remove(comp.mesh);
         }
         placedComponents.length = 0;
@@ -3234,7 +3326,8 @@
             z: c.mesh.position.z,
             customY: c.customY || null,
             rotation: c.rotation || 0,
-            parameters: c.parameters
+            parameters: c.parameters,
+            tagNumber: c.tagNumber || ''
         }));
         const pipeData = pipes.map(p => ({
             from: { componentId: p.from.componentId, portName: p.from.portName },
@@ -3269,7 +3362,10 @@
         pipes.length = 0;
         selectedPipe = null;
         if (pipeDrawingState) cleanupPipeDrawing();
-        for (const comp of placedComponents) scene.remove(comp.mesh);
+        for (const comp of placedComponents) {
+            removeComponentLabel(comp);
+            scene.remove(comp.mesh);
+        }
         placedComponents.length = 0;
         deselectComponent();
 
@@ -3292,6 +3388,10 @@
                 }
             }
             if (oldId !== undefined) idMap[oldId] = newComp.id;
+            if (item.tagNumber) {
+                newComp.tagNumber = item.tagNumber;
+                createComponentLabel(newComp);
+            }
         }
 
         // Recreate pipes (normal first, branches after)

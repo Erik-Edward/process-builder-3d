@@ -330,6 +330,16 @@ body {
     border-color: #3a3a5a;
 }
 
+/* Tag number input — wider, left-aligned, monospace */
+.prop-tag-input {
+    width: 100px;
+    text-align: left;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
 /* On/Off toggle button in properties */
 .prop-toggle-btn {
     background: #555;
