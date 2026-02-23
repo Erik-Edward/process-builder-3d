@@ -149,6 +149,9 @@
     let sequenceCompleted = false;
     let sequenceValidationInterval = null;
     let sequenceHighlightComp = null;
+    // Guard: prevents the 500ms interval from re-firing showSequenceStepSuccess
+    // during the 800ms "Korrekt!" delay, which would cause a double step-advance.
+    let sequenceStepPassing = false;
 
     // --- Fas 4b: Fault state ---
     let activeFaults = [];
@@ -4241,6 +4244,7 @@
         sequenceStepIndex = 0;
         sequenceCompleted = false;
         sequenceHighlightComp = null;
+        sequenceStepPassing = false;
         hintVisible = false;
         clearTargetButtonHighlight();
         document.getElementById('seq-hint-btn').style.display = 'none';
@@ -4301,8 +4305,10 @@
 
     function startSequenceValidation() {
         if (sequenceValidationInterval) clearInterval(sequenceValidationInterval);
+        sequenceStepPassing = false;
         sequenceValidationInterval = setInterval(() => {
             if (!activeSequence || sequenceCompleted || emergencyStopActive) return;
+            if (sequenceStepPassing) return; // already passing – wait for advance
             const step = activeSequence.steps[sequenceStepIndex];
             if (validateStepAction(step.action)) {
                 showSequenceStepSuccess();
@@ -4401,6 +4407,7 @@
     }
 
     function showSequenceStepSuccess() {
+        sequenceStepPassing = true; // block interval from firing again during delay
         const statusEl = document.getElementById('seq-step-status');
         statusEl.textContent = 'Korrekt!';
         statusEl.className = 'seq-step-status success';
@@ -4422,6 +4429,7 @@
 
     function advanceSequenceStep() {
         if (!activeSequence) return;
+        sequenceStepPassing = false; // allow interval to validate again
         const prevStepIndex = sequenceStepIndex;
         sequenceStepIndex++;
 
