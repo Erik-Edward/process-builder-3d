@@ -258,3 +258,162 @@ const FAULT_SCENARIOS = {
         ]
     }
 };
+
+/**
+ * GUIDED_EXERCISES - Byggövningar där studenten konstruerar en process från grunden.
+ * Nya action-typer: place_component, connect_components.
+ */
+const GUIDED_EXERCISES = {
+
+    pump_system_build: {
+        name: 'Bygg ett pumpsystem',
+        description: 'Placera och koppla ihop en pump, en ventil och en lagringstank.',
+        icon: '🔧',
+        difficulty: 'Enkel',
+        isExercise: true,
+        steps: [
+            {
+                instruction: 'Placera en centrifugalpump',
+                detail: 'Välj "Centrifugalpump" i komponentbiblioteket (vänster panel) och klicka på arbetsytan för att placera.',
+                action: { type: 'place_component', componentType: 'centrifugal_pump', minCount: 1 }
+            },
+            {
+                instruction: 'Placera en slidventil',
+                detail: 'Välj "Slidventil" och placera den på arbetsytan — den ska sitta i flödesvägen efter pumpen.',
+                action: { type: 'place_component', componentType: 'gate_valve', minCount: 1 }
+            },
+            {
+                instruction: 'Placera en lagringstank',
+                detail: 'Välj "Lagringstank" och placera den som slutpunkt i flödet.',
+                action: { type: 'place_component', componentType: 'storage_tank', minCount: 1 }
+            },
+            {
+                instruction: 'Koppla pump → ventil',
+                detail: 'Klicka på pumpens utport (röd kula) och sedan på ventilens inport (blå kula). Ett rör skapas automatiskt.',
+                action: { type: 'connect_components', fromType: 'pump', toType: 'valve' },
+                hint: 'Röda kulor = utportar, blå kulor = inportar. Klicka på en röd kula för att börja koppla.'
+            },
+            {
+                instruction: 'Koppla ventil → tank',
+                detail: 'Klicka på ventilens utport och sedan på tankens inport.',
+                action: { type: 'connect_components', fromType: 'valve', toType: 'tank' },
+                hint: 'Om rören inte syns: kontrollera att du klickar exakt på port-kulan (liten sfär).'
+            },
+            {
+                instruction: 'Starta simuleringen',
+                detail: 'Klicka på "Simulera" i verktygsfältet. Alla komponenter slås på automatiskt.',
+                action: { type: 'start_simulation' }
+            },
+            {
+                instruction: 'Verifiera flöde',
+                detail: 'Kontrollera att flödespartiklar rör sig längs rören: pump → ventil → tank.',
+                action: { type: 'verify_flow' }
+            }
+        ]
+    },
+
+    distillation_build: {
+        name: 'Enkel destillationsenhet',
+        description: 'Bygg ett destillationsflöde: pump → processugn → destillationskolumn → produkttankar.',
+        icon: '⚗',
+        difficulty: 'Medel',
+        isExercise: true,
+        steps: [
+            {
+                instruction: 'Placera en centrifugalpump',
+                detail: 'Pumpen driver råoljan in i ugnen. Placera den på arbetsytan.',
+                action: { type: 'place_component', componentType: 'centrifugal_pump', minCount: 1 }
+            },
+            {
+                instruction: 'Placera en processugn',
+                detail: 'Ugnen värmer råoljan till ca 350°C innan destillation. Hitta den under kategorin "Ugnar".',
+                action: { type: 'place_component', componentType: 'process_furnace', minCount: 1 }
+            },
+            {
+                instruction: 'Placera en destillationskolumn',
+                detail: 'Kolumnen separerar den uppvärmda råoljan i lättare (topp) och tyngre (botten) fraktioner.',
+                action: { type: 'place_component', componentType: 'distillation_column', minCount: 1 }
+            },
+            {
+                instruction: 'Placera minst två lagringstankar',
+                detail: 'En tank för topprodukten (t.ex. bensin) och en för bottenprodukten (t.ex. residue).',
+                action: { type: 'place_component', componentType: 'storage_tank', minCount: 2 }
+            },
+            {
+                instruction: 'Koppla pump → ugn',
+                detail: 'Klicka på pumpens utport och sedan på ugnens inport (charge_in).',
+                action: { type: 'connect_components', fromType: 'pump', toType: 'furnace' },
+                hint: 'Processugnen tar emot via "charge_in". Scrolla för att zooma in och se portar tydligare.'
+            },
+            {
+                instruction: 'Koppla ugn → kolumn',
+                detail: 'Klicka på ugnens utport (charge_out) och sedan på kolumnens inport (feed_in).',
+                action: { type: 'connect_components', fromType: 'furnace', toType: 'column' },
+                hint: 'Processugnen har "charge_out" som utport. Destillationskolumnen tar emot via "feed_in".'
+            },
+            {
+                instruction: 'Koppla kolumn → produkttank',
+                detail: 'Koppla kolumnens top_out (lättfraktion) och/eller bottom_out (tungfraktion) till en lagringstank.',
+                action: { type: 'connect_components', fromType: 'column', toType: 'tank' },
+                hint: 'Kolumnen har top_out och bottom_out. Koppla minst en av dem till en lagringstank.'
+            },
+            {
+                instruction: 'Starta simuleringen',
+                detail: 'Klicka "Simulera". Flödet: pump → ugn → kolumn → produkttankar.',
+                action: { type: 'start_simulation' }
+            },
+            {
+                instruction: 'Verifiera flöde',
+                detail: 'Partiklar flödar genom hela kedjan. Bra — du har byggt en grundläggande destillationsenhet!',
+                action: { type: 'verify_flow' }
+            }
+        ]
+    },
+
+    separator_build: {
+        name: 'Pump–Värmeväxlare–Separator',
+        description: 'Bygg ett separationssystem: pump → värmeväxlare → trefasseparator.',
+        icon: '⊜',
+        difficulty: 'Medel',
+        isExercise: true,
+        steps: [
+            {
+                instruction: 'Placera en centrifugalpump',
+                detail: 'Pumpen driver flödet in i systemet.',
+                action: { type: 'place_component', componentType: 'centrifugal_pump', minCount: 1 }
+            },
+            {
+                instruction: 'Placera en värmeväxlare',
+                detail: 'Värmeväxlaren konditionerar strömmen innan separering. Hitta den under "Värmeöverföring".',
+                action: { type: 'place_component', componentType: 'heat_exchanger', minCount: 1 }
+            },
+            {
+                instruction: 'Placera en trefasseparator',
+                detail: 'Trefasseparatorn (under "Separering") delar inflödet i gas (topp), olja (mitten) och vatten (botten).',
+                action: { type: 'place_component', componentType: 'three_phase_separator', minCount: 1 }
+            },
+            {
+                instruction: 'Koppla pump → värmeväxlare',
+                detail: 'Klicka på pumpens utport och sedan på värmeväxlarens inport.',
+                action: { type: 'connect_components', fromType: 'pump', toType: 'heat_exchanger' },
+                hint: 'Värmeväxlaren har "tube_in" och "shell_in" som inportar. Koppla pumpen till en av dem.'
+            },
+            {
+                instruction: 'Koppla värmeväxlare → separator',
+                detail: 'Klicka på värmeväxlarens utport och sedan på separatorns inport (feed_in).',
+                action: { type: 'connect_components', fromType: 'heat_exchanger', toType: 'separator' },
+                hint: 'Välj "tube_out" eller "shell_out" från värmeväxlaren → separatorns "feed_in".'
+            },
+            {
+                instruction: 'Starta simuleringen',
+                detail: 'Klicka "Simulera" för att se hur flödet delas i tre faser i separatorn.',
+                action: { type: 'start_simulation' }
+            },
+            {
+                instruction: 'Verifiera flöde',
+                detail: 'Partiklar ska röra sig pump → värmeväxlare → separator. I simuleringsgrafen delas flödet 30% gas / 40% olja / 30% vatten.',
+                action: { type: 'verify_flow' }
+            }
+        ]
+    }
+};

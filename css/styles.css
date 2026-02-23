@@ -601,6 +601,51 @@ body {
     color: #ef5350;
 }
 
+/* Card icon + body layout */
+.sequence-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.sequence-card .seq-card-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    margin-bottom: 0;
+}
+.seq-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Section label separating Byggövningar / Uppstartssekvenser */
+.seq-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    padding: 10px 0 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+}
+.seq-section-label:first-child {
+    padding-top: 0;
+}
+
+/* Difficulty badge */
+.seq-card-diff {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 4px;
+}
+.seq-card-diff.diff-enkel   { background: #1b5e2044; color: #66bb6a; }
+.seq-card-diff.diff-medel   { background: #33200044; color: #ffb74d; }
+.seq-card-diff.diff-svår    { background: #b71c1c44; color: #ef5350; }
+
 /* === Sequence panel (bottom-right in viewport) === */
 #sequence-panel {
     position: absolute;

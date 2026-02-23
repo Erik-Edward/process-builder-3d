@@ -4144,16 +4144,43 @@
         const list = document.getElementById('sequence-card-list');
         list.innerHTML = '';
 
-        // Get types of placed components
-        const placedTypes = placedComponents.map(c => c.type);
+        // --- Section 1: Byggövningar (always available) ---
+        const exLabel = document.createElement('div');
+        exLabel.className = 'seq-section-label';
+        exLabel.textContent = 'Byggövningar';
+        list.appendChild(exLabel);
 
+        for (const [key, ex] of Object.entries(GUIDED_EXERCISES)) {
+            const card = document.createElement('div');
+            card.className = 'sequence-card';
+            card.innerHTML = `
+                <div class="seq-card-icon">${ex.icon}</div>
+                <div class="seq-card-body">
+                    <div class="seq-card-name">${ex.name}</div>
+                    <div class="seq-card-desc">${ex.description}</div>
+                    <div class="seq-card-diff diff-${(ex.difficulty || 'Enkel').toLowerCase()}">${ex.difficulty || 'Enkel'}</div>
+                </div>
+            `;
+            card.addEventListener('click', () => {
+                document.getElementById('sequence-modal').style.display = 'none';
+                startSequence(key);
+            });
+            list.appendChild(card);
+        }
+
+        // --- Section 2: Uppstartssekvenser (require placed components) ---
+        const seqLabel = document.createElement('div');
+        seqLabel.className = 'seq-section-label';
+        seqLabel.textContent = 'Uppstartssekvenser';
+        list.appendChild(seqLabel);
+
+        const placedTypes = placedComponents.map(c => c.type);
         for (const [key, seq] of Object.entries(STARTUP_SEQUENCES)) {
             const card = document.createElement('div');
             card.className = 'sequence-card';
 
             const missingTypes = seq.requiredTypes.filter(t => !placedTypes.includes(t));
             const available = missingTypes.length === 0;
-
             if (!available) card.classList.add('disabled');
 
             const missingNames = missingTypes.map(t => {
@@ -4163,11 +4190,13 @@
 
             card.innerHTML = `
                 <div class="seq-card-icon">${seq.icon}</div>
-                <div class="seq-card-name">${seq.name}</div>
-                <div class="seq-card-desc">${seq.description}</div>
-                <div class="seq-card-req ${!available ? 'missing' : ''}">${
-                    available ? 'Alla komponenter tillgängliga' : 'Saknas: ' + missingNames.join(', ')
-                }</div>
+                <div class="seq-card-body">
+                    <div class="seq-card-name">${seq.name}</div>
+                    <div class="seq-card-desc">${seq.description}</div>
+                    <div class="seq-card-req ${!available ? 'missing' : ''}">${
+                        available ? 'Alla komponenter tillgängliga' : 'Saknas: ' + missingNames.join(', ')
+                    }</div>
+                </div>
             `;
 
             if (available) {
@@ -4176,7 +4205,6 @@
                     startSequence(key);
                 });
             }
-
             list.appendChild(card);
         }
 
@@ -4184,7 +4212,7 @@
     }
 
     function startSequence(key) {
-        const seq = STARTUP_SEQUENCES[key];
+        const seq = STARTUP_SEQUENCES[key] || GUIDED_EXERCISES[key];
         if (!seq) return;
 
         activeSequence = seq;
@@ -4232,7 +4260,8 @@
         hintVisible = false;
 
         if (sequenceCompleted) {
-            const prefix = activeSequence.isFaultScenario ? 'Scenario klart!' : 'Sekvens klar!';
+            const prefix = activeSequence.isFaultScenario ? 'Scenario klart!' :
+                           activeSequence.isExercise ? 'Övning klar! ✓' : 'Sekvens klar!';
             document.getElementById('seq-step-label').textContent = '';
             document.getElementById('seq-step-instruction').textContent = prefix;
             document.getElementById('seq-step-detail').textContent = 'Alla steg har slutförts framgångsrikt.';
@@ -4264,8 +4293,8 @@
             sequenceHighlightComp = null;
         }
 
-        // Start hint timer if step has a hint
-        if (step.hint && activeSequence.isFaultScenario) {
+        // Start hint timer if step has a hint (fault scenarios and exercises)
+        if (step.hint) {
             startHintTimer(step.hint);
         }
     }
@@ -4333,6 +4362,26 @@
             case 'clear_fault': {
                 // Check that specific fault type has been cleared
                 return !activeFaults.some(f => f.type === action.faultType);
+            }
+
+            case 'place_component': {
+                // Check that at least minCount components of the given type are placed
+                const count = placedComponents.filter(c =>
+                    c.type === action.componentType || c.definition.type === action.componentType
+                ).length;
+                return count >= (action.minCount || 1);
+            }
+
+            case 'connect_components': {
+                // Check that at least one pipe connects fromType → toType (by key or defType)
+                return pipes.some(p => {
+                    const fromComp = placedComponents.find(c => c.id === p.from.componentId);
+                    const toComp   = placedComponents.find(c => c.id === p.to.componentId);
+                    if (!fromComp || !toComp) return false;
+                    const fromMatch = fromComp.type === action.fromType || fromComp.definition.type === action.fromType;
+                    const toMatch   = toComp.type   === action.toType   || toComp.definition.type   === action.toType;
+                    return fromMatch && toMatch;
+                });
             }
 
             default:
