@@ -25,6 +25,7 @@
             <button id="btn-sequences" title="Uppstartssekvenser">&#128218; Sekvenser</button>
             <button id="btn-faults" title="Felsökningsscenarier">&#128295; Felsökning</button>
             <button id="btn-export-pid" title="Exportera P&ID-diagram (SVG)">&#128203; P&amp;ID</button>
+            <button id="btn-exam-mode" title="Prov-Läge: döljer hjälpfunktioner för examination">&#127891; Prov-Läge</button>
             <button id="btn-emergency" class="emergency-btn" title="Nödstopp (Space)">&#9888; NÖDSTOPP</button>
         </div>
     </header>
@@ -36,6 +37,7 @@
 
         <div id="viewport">
             <canvas id="three-canvas"></canvas>
+            <div id="exam-mode-banner" style="display:none;">🎓 PROV-LÄGE AKTIVT — Automatisk media, kompatibilitetsfeedback och auto-koppling är inaktiverade</div>
             <div id="status-bar">Klicka på en komponent i biblioteket och sedan i 3D-vyn för att placera</div>
             <!-- Port-info tooltip -->
             <div id="port-tooltip" style="display:none;">

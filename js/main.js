@@ -143,6 +143,9 @@
     // --- Fas 4: Nödstopp state ---
     let emergencyStopActive = false;
 
+    // --- Steg 6: Prov-Läge (Exam Mode) ---
+    let examMode = false;
+
     // --- Fas 4: Sequence state ---
     let activeSequence = null;
     let sequenceStepIndex = 0;
@@ -962,6 +965,7 @@
     }
 
     function detectNearbyPorts(position, rotationDeg, def, excludeId) {
+        if (examMode) return []; // Prov-Läge: ingen auto-koppling
         const results = [];
         for (const [thisPortName, thisPort] of Object.entries(def.ports)) {
             const thisWorldPos = getPortWorldPositionFromDef(def, thisPortName, position, rotationDeg);
@@ -1366,6 +1370,7 @@
         sprite.userData.isComponentLabel = true;
 
         updateComponentLabelSpritePosition(comp, sprite);
+        sprite.visible = !examMode; // Dölj etikett i Prov-Läge
         scene.add(sprite);
         comp.tagSprite = sprite;
     }
@@ -1393,6 +1398,7 @@
     // --- Resolve default media from port definitions ---
     // Returns a mediaKey string if either port has defaultMedia, otherwise null.
     function resolvePortDefaultMedia(fromComp, fromPort, toComp, toPort) {
+        if (examMode) return null; // Prov-Läge: studenten väljer media manuellt
         const fromDef = fromComp && fromPort ? fromComp.definition.ports[fromPort] : null;
         const toDef   = toComp   && toPort   ? toComp.definition.ports[toPort]     : null;
         return (fromDef && fromDef.defaultMedia) || (toDef && toDef.defaultMedia) || null;
@@ -1556,6 +1562,10 @@
      * Returnerar kompatibilitetsresultatet.
      */
     function applyPipeCompatColor(pipe) {
+        if (examMode) {
+            pipe.compat = { ok: true };
+            return pipe.compat;
+        }
         const compat = checkPipeCompatibility(pipe);
         pipe.compat = compat;
 
@@ -4524,6 +4534,47 @@
         if (e.target === document.getElementById('sequence-modal')) {
             document.getElementById('sequence-modal').style.display = 'none';
         }
+    });
+
+    // === Steg 6: Prov-Läge (Exam Mode) ===
+    function applyExamMode(active) {
+        examMode = active;
+
+        const btn = document.getElementById('btn-exam-mode');
+        const banner = document.getElementById('exam-mode-banner');
+
+        btn.classList.toggle('exam-active', active);
+        btn.innerHTML = active ? '🎓 Avsluta Prov-Läge' : '🎓 Prov-Läge';
+        banner.style.display = active ? 'block' : 'none';
+
+        // Show / hide component tag labels
+        for (const comp of placedComponents) {
+            if (comp.tagSprite) comp.tagSprite.visible = !active;
+        }
+
+        // Re-process all pipe colors
+        for (const pipe of pipes) {
+            if (active) {
+                // Entering exam mode: strip compat colors, show media/grey
+                pipe.compat = { ok: true };
+                resetPipeMeshColor(pipe);
+            } else {
+                // Leaving exam mode: restore compat feedback
+                applyPipeCompatColor(pipe);
+            }
+        }
+
+        // Refresh properties panel if a pipe or component is selected
+        if (selectedPipe) showProperties(selectedPipe);
+        else if (selectedPlacedComponent) showProperties(selectedPlacedComponent);
+
+        setStatus(active
+            ? 'Prov-Läge aktiverat — media, kompatibilitetsfeedback och auto-koppling är inaktiverade'
+            : 'Prov-Läge avaktiverat — alla hjälpfunktioner återaktiverade');
+    }
+
+    document.getElementById('btn-exam-mode').addEventListener('click', () => {
+        applyExamMode(!examMode);
     });
 
     // === Fas 4b: Fault modal & scenario start ===
