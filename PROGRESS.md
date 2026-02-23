@@ -347,6 +347,17 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Tangentbordsguard:** R/M-genvägar avfyras inte när fokus är i ett `<input>`-fält
 - **Double-step-advance fix:** `sequenceStepPassing`-flagga förhindrar att 500ms-intervallet anropar `showSequenceStepSuccess()` dubbelt under 800ms-fördröjning
 
+### Session 9 – Steg 6: Prov-Läge (Exam Mode)
+- **`examMode` boolean-flagga** i app-state
+- **`resolvePortDefaultMedia()`** returnerar `null` i examMode — student väljer alltid media manuellt via modal
+- **`applyPipeCompatColor()`** hoppar logiken, sätter `pipe.compat = { ok: true }` — inga röda/orangea rör
+- **`detectNearbyPorts()`** returnerar `[]` — ingen auto-koppling av närliggande portar
+- **`createComponentLabel()`** sätter `sprite.visible = !examMode` — nya etiketter döljs direkt i Prov-Läge
+- **`applyExamMode(active)`** central funktion: togglar allt, döljer/visar tagSprites, återställer/återapplicerar compat-färger på alla rör, uppdaterar egenskapspanelen
+- **Röd banner** i 3D-vyn: *"PROV-LÄGE AKTIVT — ..."* (`#exam-mode-banner`)
+- **Knapp `🎓 Prov-Läge`** i toolbar med röd highlight-stil när aktiv (`#btn-exam-mode.exam-active`)
+- **Examinatorvy:** Examinatorn stänger av Prov-Läge → compat-färger återkommer omedelbart på alla felkopplade rör
+
 ### Session 8 – Portfixar, Ny Tooltip, Ny Komponent och Batterigräns
 - **Dolda portar fixade (6 Separering-komponenter):** Portpositioner justerade utanför mesh-geometri för `three_phase_separator`, `drum`, `knockout_drum`, `desalter`, `h2s_scrubber`, `mol_sieve_dryer`
 - **H₂S-skrubber `spent_out`:** Ändrad från nedåt-riktad underjordisk port (`[0,-1.05,0]`) till sidodränering på sumpen (`[-0.28,-0.94,0]`, riktning vänster). Munstycksmesh uppdaterad.
@@ -401,31 +412,11 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - Svårighetsgrads-badge per övning (Enkel/Medel/Svår)
 - `sequenceStepPassing`-flagga förhindrar dubbel-steg-avancering
 
-#### Steg 6 – Prov-Läge (Exam Mode) ✳️ NÄSTA
-Examinationsläge där studenten demonstrerar att de verkligen förstår processen — utan hjälp från verktyget.
-
-**Inaktiverat i Prov-Läge:**
-- Mediakompabilitetskontroll (inga röda/orangea rör)
-- Automatiskt mediaval (`defaultMedia` hoppar inte modalen — studenten väljer allt manuellt)
-- Auto-koppling av närliggande portar (snap-to-connect inaktivt)
-- Pipe-mediabeteckningar (labels döljs — studenten ser inte bekräftelsen)
-
-**Aktivt i Prov-Läge:**
-- All normal byggfunktionalitet (placera, flytta, koppla, rotera)
-- Spara/ladda (för inlämning av provarbete)
-- P&ID-export (för granskning av examinator/lärare)
-- Taggnummer på komponenter
-
-**Examinatorvy:** Examinatorn öppnar den sparade processen i normalt lärläge → alla
-inkompatibla kopplingar syns direkt som röda/orangea rör. Korrekt byggd anläggning = inga varningar.
-
-**Implementation:**
-- Toggle-knapp i toolbar: `[🎓 Prov-Läge]` — tydlig visuell indikation när aktivt
-- `examMode` boolean-flagga i app-state
-- `resolvePortDefaultMedia()` returnerar null i examMode
-- `applyPipeCompatColor()` hoppar sin logik i examMode
-- `detectNearbyPorts()` returnerar [] i examMode
-- Pipe-labels döljs (sprite.visible = !examMode)
+#### Steg 6 – Prov-Läge (Exam Mode) ✅ KLART
+- `examMode` boolean-flagga; toggle-knapp `🎓 Prov-Läge` i toolbar
+- Inaktiverar: automatiskt mediaval, compat-feedback (röda rör), auto-koppling, komponentetiketter
+- Röd banner i 3D-vyn när aktivt; knapp röd-markerad
+- Examinatorvy: stäng av Prov-Läge → alla compat-fel syns direkt
 
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)

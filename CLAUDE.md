@@ -125,8 +125,8 @@ process-builder-3d/
 ```
 
 ## Aktuell Status
-Fas 1, 2 och Fas 3 (steg 1–5) är klara. Applikationen är fullt körbar med:
-- 55 komponenter med detaljerade 3D-modeller (13 kategorier inkl. ny kategori Anslutningar)
+Fas 1, 2 och Fas 3 (steg 1–6) är klara. Applikationen är fullt körbar med:
+- 55 komponenter med detaljerade 3D-modeller (13 kategorier inkl. Anslutningar)
 - 31 mediatyper, automatiskt mediaval på ~30 portar
 - Manuell och auto-koppling av rörledningar
 - Spara/ladda (namngivna slots, JSON export/import)
@@ -136,11 +136,12 @@ Fas 1, 2 och Fas 3 (steg 1–5) är klara. Applikationen är fullt körbar med:
 - Guidade byggövningar (3 st) med steg-för-steg verifiering
 - Port-info tooltip vid klick på portar
 - Batterigräns-markörer för inter-anläggningskopplingar
+- **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
 - P&ID-export (SVG)
 
 ## Nästa prioriterade steg
-1. **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
-2. Fler guidade övningar (bensinavsvavlingsanläggning m.fl.)
+1. Fler guidade övningar (t.ex. bensinavsvavlingsanläggning HDS)
+2. Felsökningsscenarier — presentera ett processfel, studenten diagnostiserar
 3. Förbättrad P&ID-export med ISA-symboler
 
 ## Prov-Läge (Exam Mode) — Pedagogisk Nyckelfeature
