@@ -2988,11 +2988,11 @@ const COMPONENT_DEFINITIONS = {
         category: 'Separering',
         description: 'Horisontell trefasseparator (olja/vatten/gas)',
         ports: {
-            feed_in:   { position: [-0.8, 0.15, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
-            gas_out:   { position: [0, 0.35, 0],      direction: [0, 1, 0],  type: 'liquid_out' },
-            oil_out:   { position: [0.8, 0.1, 0],     direction: [1, 0, 0],  type: 'liquid_out' },
-            water_out: { position: [0.8, -0.15, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
-            drain:     { position: [0, -0.35, 0.3],   direction: [0, 0, 1],  type: 'liquid_out' }
+            feed_in:   { position: [-1.1, 0.15, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
+            gas_out:   { position: [0, 0.50, 0],      direction: [0, 1, 0],  type: 'liquid_out' },
+            oil_out:   { position: [1.1, 0.10, 0],    direction: [1, 0, 0],  type: 'liquid_out' },
+            water_out: { position: [1.1, -0.15, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
+            drain:     { position: [0, -0.40, 0.3],   direction: [0, 0, 1],  type: 'liquid_out' }
         },
         parameters: {
             pressure: { value: 8,    unit: 'bar',   label: 'Tryck' },
@@ -3048,10 +3048,10 @@ const COMPONENT_DEFINITIONS = {
         category: 'Separering',
         description: 'Horisontell tryckbehållare (reflux drum, knockout drum)',
         ports: {
-            inlet:      { position: [-0.7, 0.15, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
-            vapor_out:  { position: [0, 0.3, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
-            liquid_out: { position: [0.7, -0.1, 0],    direction: [1, 0, 0],  type: 'liquid_out' },
-            drain:      { position: [0, -0.3, 0.25],   direction: [0, 0, 1],  type: 'liquid_out' }
+            inlet:      { position: [-0.95, 0.15, 0],  direction: [-1, 0, 0], type: 'liquid_in' },
+            vapor_out:  { position: [0, 0.35, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
+            liquid_out: { position: [0.95, -0.10, 0],   direction: [1, 0, 0],  type: 'liquid_out' },
+            drain:      { position: [0, -0.35, 0.25],   direction: [0, 0, 1],  type: 'liquid_out' }
         },
         parameters: {
             volume:   { value: 8,   unit: 'm³',  label: 'Volym' },
@@ -3248,6 +3248,92 @@ const COMPONENT_DEFINITIONS = {
                 leg.rotation.x = -Math.sin(a) * 0.15;
                 group.add(leg);
             }
+            return group;
+        }
+    },
+
+    // --- Bränngasbehållare ---
+    fuel_gas_drum: {
+        type: 'tank',
+        subtype: 'fuel_gas',
+        name: 'Bränngasbehållare',
+        icon: '◑',
+        category: 'Tankar',
+        description: 'Horisontell trycktank för bränngas (fuel gas). Samlar och buffrar bränngasflödet till ugnar, pannor och gasbrännare. Vanligtvis gul färg som faromärkning.',
+        ports: {
+            gas_in:   { position: [-1.05, 0.15, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'fuel_gas' },
+            gas_out:  { position: [1.05, 0.15, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'fuel_gas' },
+            drain:    { position: [0, -0.38, 0.28],   direction: [0, 0, 1],  type: 'liquid_out' },
+            relief:   { position: [0, 0.45, 0],       direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'fuel_gas' }
+        },
+        parameters: {
+            volume:   { value: 15,   unit: 'm³',   label: 'Volym' },
+            pressure: { value: 3.5,  unit: 'barg', label: 'Tryck' },
+            temp:     { value: 50,   unit: '°C',   label: 'Temperatur' },
+            level:    { value: 40,   unit: '%',    label: 'Vätskenivå' }
+        },
+        color: 0xfdd835,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: this.color });
+            const capMat  = new THREE.MeshStandardMaterial({ color: 0xf9a825 });
+            const nMat    = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            // Horisontell cylinderkropp
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.32, 0.32, 1.8, 24),
+                bodyMat
+            );
+            body.rotation.z = Math.PI / 2;
+            group.add(body);
+
+            // Ändlock (halvsfäriska)
+            for (const x of [-0.9, 0.9]) {
+                const cap = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.32, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+                    capMat
+                );
+                cap.rotation.z = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+                cap.position.x = x;
+                group.add(cap);
+            }
+
+            // Svart farumärkning (diagonal rand)
+            for (const x of [-0.45, 0, 0.45]) {
+                const band = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.323, 0.323, 0.07, 24),
+                    new THREE.MeshStandardMaterial({ color: 0x212121 })
+                );
+                band.rotation.z = Math.PI / 2;
+                band.position.x = x;
+                group.add(band);
+            }
+
+            // Saddelstöd
+            const saddleMat = new THREE.MeshStandardMaterial({ color: 0x78909c });
+            for (const x of [-0.45, 0.45]) {
+                const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.28, 0.55), saddleMat);
+                saddle.position.set(x, -0.42, 0);
+                group.add(saddle);
+            }
+
+            // Gas inlet nozzle (vänster ändlock)
+            const nIn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8), nMat);
+            nIn.rotation.z = Math.PI / 2;
+            nIn.position.set(-1.01, 0.15, 0);
+            group.add(nIn);
+
+            // Gas outlet nozzle (höger ändlock)
+            const nOut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8), nMat);
+            nOut.rotation.z = Math.PI / 2;
+            nOut.position.set(1.01, 0.15, 0);
+            group.add(nOut);
+
+            // PSV/relief nozzle (topp)
+            const nRelief = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 8), nMat);
+            nRelief.position.set(0, 0.42, 0);
+            group.add(nRelief);
+
             return group;
         }
     },
@@ -3524,9 +3610,9 @@ const COMPONENT_DEFINITIONS = {
         category: 'Separering',
         description: 'Knockout-behållare (vertikal) för att skydda kompressorer från vätskemedfölj',
         ports: {
-            inlet:      { position: [0.45, -0.2, 0],  direction: [1, 0, 0],  type: 'liquid_in' },
-            gas_out:    { position: [0, 0.85, 0],      direction: [0, 1, 0],  type: 'liquid_out' },
-            liquid_out: { position: [0.45, -0.65, 0],  direction: [1, 0, 0],  type: 'liquid_out' }
+            inlet:      { position: [0.55, -0.2, 0],   direction: [1, 0, 0],  type: 'liquid_in' },
+            gas_out:    { position: [0, 1.15, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
+            liquid_out: { position: [0.55, -0.65, 0],  direction: [1, 0, 0],  type: 'liquid_out' }
         },
         parameters: {
             volume:   { value: 5,   unit: 'm³',  label: 'Volym' },
@@ -4139,10 +4225,10 @@ const COMPONENT_DEFINITIONS = {
         category: 'Separering',
         description: 'Kaustisk skrubber för avskiljning av H₂S och merkapaner från gasströmmar med NaOH-lösning. Kompakt enhet för slutrening. Det svarta bandet markerar H₂S-fara.',
         ports: {
-            gas_in:     { position: [-0.28, -0.52, 0], direction: [-1, 0, 0], type: 'liquid_in' },
-            gas_out:    { position: [0, 0.84, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
-            caustic_in: { position: [0.28, 0.42, 0],   direction: [1, 0, 0],  type: 'liquid_in' },
-            spent_out:  { position: [0, -0.88, 0],      direction: [0, -1, 0], type: 'liquid_out', defaultMedia: 'caustic' }
+            gas_in:     { position: [-0.46, -0.52, 0], direction: [-1, 0, 0], type: 'liquid_in' },
+            gas_out:    { position: [0, 1.02, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
+            caustic_in: { position: [0.46, 0.42, 0],   direction: [1, 0, 0],  type: 'liquid_in' },
+            spent_out:  { position: [-0.28, -0.94, 0],   direction: [-1, 0, 0], type: 'liquid_out', defaultMedia: 'caustic' }
         },
         parameters: {
             pressure:  { value: 5,    unit: 'barg',  label: 'Tryck' },
@@ -4237,9 +4323,10 @@ const COMPONENT_DEFINITIONS = {
             nCausIn.position.set(0.30, 0.40, 0);
             group.add(nCausIn);
 
-            // Förbrukad lut-dräning (botten)
+            // Förbrukad lut-dräning (sida av sump)
             const nSpent = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.18, 10), nMat);
-            nSpent.position.set(0, -0.86, 0);
+            nSpent.rotation.z = Math.PI / 2;
+            nSpent.position.set(-0.21, -0.94, 0);
             group.add(nSpent);
 
             // Stödben (3 st)
@@ -4408,10 +4495,10 @@ const COMPONENT_DEFINITIONS = {
         category: 'Separering',
         description: 'Elektrostatisk råoljedesalter. Råoljan blandas med tvättvatten och passerar ett högspänningsfält (~24 kV) som koalescerar saltlaksdroppar. Minskar salthalt från ~50 PTB till <2 PTB.',
         ports: {
-            crude_in:  { position: [-0.85, 0.10, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'crude_oil' },
-            crude_out: { position: [0.85, 0.10, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'crude_oil' },
-            water_in:  { position: [-0.5, -0.30, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'process_water' },
-            brine_out: { position: [0.5, -0.30, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'sour_water' }
+            crude_in:  { position: [-1.20, 0.10, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'crude_oil' },
+            crude_out: { position: [1.20, 0.10, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'crude_oil' },
+            water_in:  { position: [-0.5, -0.42, 0],  direction: [0, -1, 0], type: 'liquid_in',  defaultMedia: 'process_water' },
+            brine_out: { position: [0.5, -0.42, 0],   direction: [0, -1, 0], type: 'liquid_out', defaultMedia: 'sour_water' }
         },
         parameters: {
             voltage:   { value: 24,  unit: 'kV',   label: 'Elektrodspänning' },
@@ -4544,10 +4631,10 @@ const COMPONENT_DEFINITIONS = {
         category: 'Separering',
         description: 'Fast packad bädd med zeoliter (4A eller 13X) för djuptorkning av gas- eller vätskeströmmar. Tvåkärlesystem: ett kärl i drift, ett under regenerering med varm N₂.',
         ports: {
-            feed_in:    { position: [0, -0.85, 0.28],  direction: [0, 0, 1],  type: 'liquid_in' },
-            dry_out:    { position: [0, 0.95, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
-            regen_in:   { position: [0.28, 0.70, 0],   direction: [1, 0, 0],  type: 'liquid_in',  defaultMedia: 'nitrogen' },
-            regen_out:  { position: [0.28, -0.70, 0],  direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'nitrogen' }
+            feed_in:    { position: [0, -0.85, 0.32],  direction: [0, 0, 1],  type: 'liquid_in' },
+            dry_out:    { position: [0, 1.15, 0],       direction: [0, 1, 0],  type: 'liquid_out' },
+            regen_in:   { position: [0.32, 0.70, 0],   direction: [1, 0, 0],  type: 'liquid_in',  defaultMedia: 'nitrogen' },
+            regen_out:  { position: [0.32, -0.70, 0],  direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'nitrogen' }
         },
         parameters: {
             capacity:   { value: 5000, unit: 'Nm³/h', label: 'Gasflöde' },
@@ -4665,6 +4752,129 @@ const COMPONENT_DEFINITIONS = {
             );
             tSensor.position.set(-0.28, 0.25, 0.10);
             group.add(tSensor);
+
+            return group;
+        }
+    },
+
+    // --- Anslutningar: Batterigräns ---
+    battery_limit_in: {
+        type: 'system',
+        subtype: 'battery_limit',
+        name: 'Batterigräns Intag',
+        icon: '↦',
+        category: 'Anslutningar',
+        description: 'Markerar batterigränsen mot en annan anläggning. Röret KOMMER IN till den aktuella anläggningen härifrån. Fyll i källanläggning och ledningsnummer i egenskaper.',
+        ports: {
+            outlet: { position: [0.52, 0, 0], direction: [1, 0, 0], type: 'liquid_out' }
+        },
+        parameters: {
+            sourceUnit: { value: 'Från: ?',      unit: '', label: 'Källanläggning' },
+            lineNo:     { value: '',              unit: '', label: 'Ledningsnummer' },
+            medium:     { value: '',              unit: '', label: 'Medium' }
+        },
+        color: 0xffd600,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: this.color });
+            const rimMat  = new THREE.MeshStandardMaterial({ color: 0xe65100 });
+            const nMat    = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            // Diamond body (box rotated 45° around y=0)
+            const diamond = new THREE.Mesh(
+                new THREE.BoxGeometry(0.55, 0.55, 0.14),
+                bodyMat
+            );
+            diamond.rotation.z = Math.PI / 4;
+            group.add(diamond);
+
+            // Orange border ring (slightly larger box, wireframe-like via thin frame)
+            const rim = new THREE.Mesh(
+                new THREE.BoxGeometry(0.60, 0.60, 0.08),
+                rimMat
+            );
+            rim.rotation.z = Math.PI / 4;
+            rim.position.z = 0.03;
+            group.add(rim);
+
+            // Arrow shaft pointing right (toward outlet port)
+            const shaft = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.055, 0.055, 0.32, 8),
+                nMat
+            );
+            shaft.rotation.z = Math.PI / 2;
+            shaft.position.x = 0.37;
+            group.add(shaft);
+
+            // Arrowhead
+            const arrowHead = new THREE.Mesh(
+                new THREE.ConeGeometry(0.10, 0.16, 8),
+                nMat
+            );
+            arrowHead.rotation.z = -Math.PI / 2;
+            arrowHead.position.x = 0.55;
+            group.add(arrowHead);
+
+            return group;
+        }
+    },
+
+    battery_limit_out: {
+        type: 'system',
+        subtype: 'battery_limit',
+        name: 'Batterigräns Utlopp',
+        icon: '↦',
+        category: 'Anslutningar',
+        description: 'Markerar batterigränsen mot en annan anläggning. Röret LÄMNAR den aktuella anläggningen hit. Fyll i målanläggning och ledningsnummer i egenskaper.',
+        ports: {
+            inlet: { position: [-0.52, 0, 0], direction: [-1, 0, 0], type: 'liquid_in' }
+        },
+        parameters: {
+            destUnit: { value: 'Till: ?', unit: '', label: 'Målanläggning' },
+            lineNo:   { value: '',        unit: '', label: 'Ledningsnummer' },
+            medium:   { value: '',        unit: '', label: 'Medium' }
+        },
+        color: 0xffd600,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: this.color });
+            const rimMat  = new THREE.MeshStandardMaterial({ color: 0xe65100 });
+            const nMat    = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            // Diamond body
+            const diamond = new THREE.Mesh(
+                new THREE.BoxGeometry(0.55, 0.55, 0.14),
+                bodyMat
+            );
+            diamond.rotation.z = Math.PI / 4;
+            group.add(diamond);
+
+            // Orange border rim
+            const rim = new THREE.Mesh(
+                new THREE.BoxGeometry(0.60, 0.60, 0.08),
+                rimMat
+            );
+            rim.rotation.z = Math.PI / 4;
+            rim.position.z = 0.03;
+            group.add(rim);
+
+            // Arrow shaft pointing left (from inlet port into diamond)
+            const shaft = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.055, 0.055, 0.32, 8),
+                nMat
+            );
+            shaft.rotation.z = Math.PI / 2;
+            shaft.position.x = -0.37;
+            group.add(shaft);
+
+            // Arrowhead pointing left (leaving the plant)
+            const arrowHead = new THREE.Mesh(
+                new THREE.ConeGeometry(0.10, 0.16, 8),
+                nMat
+            );
+            arrowHead.rotation.z = Math.PI / 2;
+            arrowHead.position.x = -0.55;
+            group.add(arrowHead);
 
             return group;
         }

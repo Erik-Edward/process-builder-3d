@@ -156,8 +156,10 @@
     // --- Fas 4b: Fault state ---
     let activeFaults = [];
     let faultNextId = 1;
-    let hintTimer = null;
-    let hintVisible = false;
+
+    // --- Port tooltip ---
+    let portTooltipTimer = null;
+
 
     // Fas 2: Intelligent koppling
     const PORT_COLOR_COMPATIBLE = 0x69f0ae;
@@ -471,6 +473,8 @@
             if (portHits.length > 0) {
                 const marker = portHits[0].object;
                 const info = marker.userData.portInfo;
+                const pComp = placedComponents.find(c => c.id === info.componentId);
+                if (pComp) showPortTooltip(pComp.definition.name, info.portName, info.portType, e.clientX, e.clientY);
                 handlePortClick(info.componentId, info.portName, info.portType, marker);
                 return;
             }
@@ -567,6 +571,41 @@
         }
     });
 
+    // --- Port info tooltip ---
+    function showPortTooltip(compName, portName, portType, clientX, clientY) {
+        const tooltip = document.getElementById('port-tooltip');
+        const isOut = portType === 'liquid_out';
+        tooltip.querySelector('.port-tooltip-comp').textContent = compName;
+        tooltip.querySelector('.port-tooltip-portname').textContent = portName;
+        tooltip.querySelector('.port-tooltip-porttype').textContent = portType;
+        tooltip.querySelector('.port-tooltip-hint').textContent = isOut
+            ? 'Klicka för att starta rördragning'
+            : 'Inport — klicka på en utport (röd) för att koppla';
+        tooltip.className = isOut ? 'port-out' : 'port-in';
+
+        let left = clientX + 18;
+        let top  = clientY - 15;
+        if (left + 270 > window.innerWidth)  left = clientX - 275;
+        if (top  < 8)                         top  = clientY + 18;
+        if (top  + 120 > window.innerHeight)  top  = clientY - 125;
+        tooltip.style.left    = left + 'px';
+        tooltip.style.top     = top  + 'px';
+        tooltip.style.opacity = '1';
+        tooltip.style.display = 'block';
+
+        clearTimeout(portTooltipTimer);
+        portTooltipTimer = setTimeout(() => {
+            tooltip.style.opacity = '0';
+            setTimeout(() => { tooltip.style.display = 'none'; }, 260);
+        }, 4000);
+    }
+
+    function hidePortTooltip() {
+        clearTimeout(portTooltipTimer);
+        const tooltip = document.getElementById('port-tooltip');
+        tooltip.style.display = 'none';
+    }
+
     // --- Handle port click for connections (two-phase pipe drawing) ---
     // Phase 1: Click outport → select source
     // Phase 2: Click inport → select destination, enter waypoint drawing mode
@@ -584,7 +623,7 @@
         if (!pipeDrawingState) {
             // Phase 1: Select source outport
             if (portType !== 'liquid_out') {
-                setStatus('Börja med att klicka på en utport (röd) för att starta rördragning');
+                setStatus(`${comp.definition.name} › ${portName} (${portType}) — Inport. Klicka på en utport (röd) för att starta rördragning.`);
                 return;
             }
 
@@ -604,7 +643,7 @@
                 fromPortType: portType
             };
             document.getElementById('viewport').classList.add('mode-connect');
-            setStatus(`Vald utport på ${comp.definition.name}. Klicka nu på en inport (blå) för att välja mål. (Esc = avbryt)`);
+            setStatus(`${comp.definition.name} › ${portName} (${portType}) — Klicka nu på en inport (blå) för att välja mål. (Esc = avbryt)`);
 
         } else if (pipeDrawingState.phase === 'select-target') {
             // Phase 2: Select destination inport
@@ -613,7 +652,7 @@
                 return;
             }
             if (portType !== 'liquid_in') {
-                setStatus('Klicka på en inport (blå) för att välja mål');
+                setStatus(`${comp.definition.name} › ${portName} (${portType}) — Utport. Klicka på en inport (blå) som mål.`);
                 return;
             }
 
@@ -2335,6 +2374,7 @@
         if (!pipeDrawingState) return;
         cleanupPipeDrawing();
         resetPortHighlights();
+        hidePortTooltip();
         setStatus('Rördragning avbruten');
     }
 
@@ -4239,15 +4279,12 @@
         if (activeSequence && activeSequence.isFaultScenario) {
             clearAllFaults();
         }
-        clearHintTimer();
         activeSequence = null;
         sequenceStepIndex = 0;
         sequenceCompleted = false;
         sequenceHighlightComp = null;
         sequenceStepPassing = false;
-        hintVisible = false;
         clearTargetButtonHighlight();
-        document.getElementById('seq-hint-btn').style.display = 'none';
         document.getElementById('sequence-panel').style.display = 'none';
         setStatus('Sekvens avbruten');
     }
@@ -4256,12 +4293,6 @@
         if (!activeSequence) return;
         const steps = activeSequence.steps;
         const total = steps.length;
-
-        // Clear hint state
-        clearHintTimer();
-        const hintBtn = document.getElementById('seq-hint-btn');
-        hintBtn.style.display = 'none';
-        hintVisible = false;
 
         if (sequenceCompleted) {
             const prefix = activeSequence.isFaultScenario ? 'Scenario klart!' :
@@ -4297,10 +4328,6 @@
             sequenceHighlightComp = null;
         }
 
-        // Start hint timer if step has a hint (fault scenarios and exercises)
-        if (step.hint) {
-            startHintTimer(step.hint);
-        }
     }
 
     function startSequenceValidation() {
@@ -4498,32 +4525,6 @@
             document.getElementById('sequence-modal').style.display = 'none';
         }
     });
-
-    // === Fas 4b: Hint timer ===
-    function startHintTimer(hintText) {
-        clearHintTimer();
-        const hintBtn = document.getElementById('seq-hint-btn');
-        hintBtn.style.display = 'none';
-        hintVisible = false;
-
-        hintTimer = setTimeout(() => {
-            hintBtn.style.display = 'block';
-            hintBtn.onclick = () => {
-                document.getElementById('seq-step-detail').textContent = hintText;
-                hintBtn.style.display = 'none';
-                hintVisible = true;
-            };
-        }, 10000); // Show hint button after 10 seconds
-    }
-
-    function clearHintTimer() {
-        if (hintTimer) {
-            clearTimeout(hintTimer);
-            hintTimer = null;
-        }
-    }
-
-    document.getElementById('seq-hint-btn').addEventListener('click', () => {});
 
     // === Fas 4b: Fault modal & scenario start ===
     function openFaultModal() {

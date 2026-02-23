@@ -1113,3 +1113,44 @@ body {
     color: var(--text-primary);
     border-color: #5a5a8a;
 }
+
+/* ===== Port-info tooltip ===== */
+#port-tooltip {
+    position: fixed;
+    background: rgba(12, 18, 38, 0.96);
+    border-radius: 7px;
+    padding: 9px 14px;
+    pointer-events: none;
+    z-index: 2000;
+    max-width: 260px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.6);
+    transition: opacity 0.25s;
+    border-left: 3px solid #4fc3f7;
+}
+#port-tooltip.port-out { border-left-color: #ef5350; }
+#port-tooltip.port-in  { border-left-color: #42a5f5; }
+.port-tooltip-comp {
+    font-size: 11px;
+    color: #90caf9;
+    margin-bottom: 3px;
+    letter-spacing: 0.03em;
+}
+.port-tooltip-portname {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+}
+.port-tooltip-porttype {
+    font-size: 11px;
+    color: #b0bec5;
+    margin-top: 2px;
+}
+.port-tooltip-hint {
+    font-size: 11px;
+    color: #78909c;
+    margin-top: 5px;
+    font-style: italic;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 4px;
+}

@@ -62,16 +62,16 @@ process-builder-3d/
 ├── PROGRESS.md                # Detaljerad projektstatus och arbetslogg
 ├── index.html                 # Huvud-HTML
 ├── css/
-│   └── styles.css             # All styling
+│   └── styles.css             # All styling inkl. port-tooltip
 ├── js/
 │   ├── main.js                # Appens motor: scen, kopplingar, media-modal,
-│   │                          # resolvePortDefaultMedia(), export
-│   ├── components.js          # 52 komponentdefinitioner med 3D-geometri
+│   │                          # simulering, sekvenser, port-tooltip
+│   ├── components.js          # 55 komponentdefinitioner med 3D-geometri
 │   │                          # och defaultMedia på portar
-│   ├── componentLibrary.js    # Vänster panel: flikar, sökning, kort
+│   ├── componentLibrary.js    # Vänster panel: 13 kategorier, sökning, kort
 │   ├── media.js               # 31 mediatyper (färg, fas, faroklass)
 │   ├── pid-export.js          # P&ID-export till SVG
-│   └── sequences.js           # Uppstartssekvenser (påbörjad)
+│   └── sequences.js           # Uppstartssekvenser + guidade byggövningar
 ├── process description/       # Processbeskrivningar som referensmaterial
 └── data/
     └── saved-processes/       # Sparade processkonfigurationer
@@ -125,19 +125,23 @@ process-builder-3d/
 ```
 
 ## Aktuell Status
-Fas 1, 2 och delar av Fas 3 är klara. Applikationen är fullt körbar med:
-- 52 komponenter med detaljerade 3D-modeller
+Fas 1, 2 och Fas 3 (steg 1–5) är klara. Applikationen är fullt körbar med:
+- 55 komponenter med detaljerade 3D-modeller (13 kategorier inkl. ny kategori Anslutningar)
 - 31 mediatyper, automatiskt mediaval på ~30 portar
 - Manuell och auto-koppling av rörledningar
 - Spara/ladda (namngivna slots, JSON export/import)
 - Komponentetiketter (taggnummer) i 3D-vyn
 - Mediakompabilitetskontroll med röd/orange feedback
+- Enkel flödessimulering med temperaturfärgade rör
+- Guidade byggövningar (3 st) med steg-för-steg verifiering
+- Port-info tooltip vid klick på portar
+- Batterigräns-markörer för inter-anläggningskopplingar
 - P&ID-export (SVG)
 
 ## Nästa prioriterade steg
-1. Enkel flödessimulering (Fas 3) — animerade partiklar, on/off, temperaturvisning
-2. Guidade övningar / scenarion (Fas 3)
-3. **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
+1. **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
+2. Fler guidade övningar (bensinavsvavlingsanläggning m.fl.)
+3. Förbättrad P&ID-export med ISA-symboler
 
 ## Prov-Läge (Exam Mode) — Pedagogisk Nyckelfeature
 Separat läge för att examinera studenter utan ledtrådar från verktyget.

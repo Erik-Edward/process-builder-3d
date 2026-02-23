@@ -20,7 +20,9 @@ const ComponentLibrary = (() => {
         'Kylning':           { icon: '❄', order: 8 },
         'Säkerhet':          { icon: '⚠', order: 9 },
         'Instrument':        { icon: '◈', order: 10 },
-        'Övrigt':            { icon: '…', order: 11 }
+        'Utilities':         { icon: '💧', order: 11 },
+        'Anslutningar':      { icon: '⇌', order: 12 },
+        'Övrigt':            { icon: '…', order: 13 }
     };
 
     let activeTab = null;

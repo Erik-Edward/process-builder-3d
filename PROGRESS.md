@@ -25,17 +25,17 @@ process-builder-3d/
 ├── PROGRESS.md                # Detta dokument
 ├── index.html                 # Huvud-HTML, laddar alla JS/CSS
 ├── css/
-│   └── styles.css             # All styling (dark theme, paneler, kort)
+│   └── styles.css             # All styling (dark theme, paneler, kort, port-tooltip)
 ├── js/
 │   ├── main.js                # Appens motor: Three.js-scen, kamera,
 │   │                          # placering, kopplingar, media-modal,
-│   │                          # defaultMedia-logik, P&ID-export
-│   ├── components.js          # 52 komponentdefinitioner med 3D-geometri
+│   │                          # defaultMedia-logik, simulering, sekvenser
+│   ├── components.js          # 55 komponentdefinitioner med 3D-geometri
 │   │                          # och defaultMedia på relevanta portar
-│   ├── componentLibrary.js    # Vänster panel: flikar, sökning, kort
+│   ├── componentLibrary.js    # Vänster panel: flikar (13 kategorier), sökning, kort
 │   ├── media.js               # 31 mediatyper med färg, fas, faroklass
 │   ├── pid-export.js          # Export till P&ID-format (SVG)
-│   └── sequences.js           # Uppstartssekvenser (påbörjad)
+│   └── sequences.js           # Uppstartssekvenser + guidade övningar
 ├── process description/
 │   ├── Processbeskrivning av en bensinavsvavlingsanläggning.md
 │   └── Ugn-doc.md
@@ -79,7 +79,7 @@ process-builder-3d/
 
 ---
 
-## Komponentbibliotek (52 komponenter)
+## Komponentbibliotek (55 komponenter)
 
 ### Pumpar (5 st)
 | Nyckel | Namn |
@@ -122,12 +122,13 @@ process-builder-3d/
 | `desalter` | Desalter (elektrostatisk råoljedesalter) |
 | `mol_sieve_dryer` | Molekylsikt-tork (zeolitbädd) |
 
-### Tankar (3 st)
+### Tankar (4 st)
 | Nyckel | Namn |
 |--------|------|
 | `storage_tank` | Lagringstank |
 | `floating_roof_tank` | Flyttak-tank |
 | `sphere_tank` | Sfärisk trycktank |
+| `fuel_gas_drum` | Bränngasbehållare (horisontell, gul) |
 
 ### Värmeöverföring (3 st)
 | Nyckel | Namn |
@@ -193,6 +194,12 @@ Dessa saknar stack och har en `flue_gas_out`-port (auto: **Rökgas**) för koppl
 | `flow_meter` | Flödesmätare |
 | `static_mixer` | Statisk mixer |
 | `ejector` | Ejektor |
+
+### Anslutningar (2 st)
+| Nyckel | Namn | Beskrivning |
+|--------|------|-------------|
+| `battery_limit_in` | Batterigräns Intag | Gul diamantmarkör – rör kommer IN från annan anläggning. Har `liquid_out`-port. Fyll i källanläggning + ledningsnummer i egenskapspanelen. |
+| `battery_limit_out` | Batterigräns Utlopp | Gul diamantmarkör – rör lämnar till annan anläggning. Har `liquid_in`-port. Fyll i målanläggning + ledningsnummer i egenskapspanelen. |
 
 ---
 
@@ -333,6 +340,23 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Statusraden** – visar "✕ Inkompatibel: …" eller "⚠ Varning: …" direkt när
   rör skapas (manuellt och auto) eller media ändras via "Ändra media"
 
+### Session 7 (fortsättning) – Steg 5: Guidade övningar + Simuleringsbuggfixar
+- **Steg 5 – Guidade byggövningar:** Tre övningar med steg-för-steg verifiering i `sequences.js`
+- **Auto-start simulering:** `startSimTick()` sätter alla komponenter till `running = true` automatiskt
+- **Toggle-knapp fix:** `updatePropertiesComputedSection()` – uppdaterar bara computed-sektionen i egenskapspanelen (istf. hela panelen) så knappklick inte avbryts av simTick-rebuild
+- **Tangentbordsguard:** R/M-genvägar avfyras inte när fokus är i ett `<input>`-fält
+- **Double-step-advance fix:** `sequenceStepPassing`-flagga förhindrar att 500ms-intervallet anropar `showSequenceStepSuccess()` dubbelt under 800ms-fördröjning
+
+### Session 8 – Portfixar, Ny Tooltip, Ny Komponent och Batterigräns
+- **Dolda portar fixade (6 Separering-komponenter):** Portpositioner justerade utanför mesh-geometri för `three_phase_separator`, `drum`, `knockout_drum`, `desalter`, `h2s_scrubber`, `mol_sieve_dryer`
+- **H₂S-skrubber `spent_out`:** Ändrad från nedåt-riktad underjordisk port (`[0,-1.05,0]`) till sidodränering på sumpen (`[-0.28,-0.94,0]`, riktning vänster). Munstycksmesh uppdaterad.
+- **Port info tooltip:** Flytande infokort visas vid muspekaren när man klickar på valfri port (in eller ut). Visar komponentnamn, portnamn, porttyp och ledtråd. Färgkodad kantlinje: röd = utport, blå = inport. Tonar ut efter 4 sekunder.
+- **Tips-knappen borttagen:** Removed `seq-hint-btn`, all timer-logik och `hintTimer`/`hintVisible`-variabler städade från `main.js` och `index.html`.
+- **Ny komponent – `fuel_gas_drum`:** Horisontell trycktank för bränngas (Tankar-kategori). Gul med svarta säkerhetsmärkningsband. Portar: `gas_in`, `gas_out`, `drain`, `relief`. Default media `fuel_gas`.
+- **Ny kategori – Anslutningar:** Läggs till i `componentLibrary.js` med ikon `⇌`, ordning 12.
+- **Ny komponent – `battery_limit_in`:** Gul diamantmarkör med pil höger. `liquid_out`-port. Representerar rör som kommer IN från annan anläggning. Editerbara fält: källanläggning, ledningsnummer, medium.
+- **Ny komponent – `battery_limit_out`:** Gul diamantmarkör med pil vänster. `liquid_in`-port. Representerar rör som lämnar till annan anläggning.
+
 ---
 
 ## Planerat / Framtida Arbete
@@ -370,13 +394,14 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Statusrad** visar `▶ Simulering — X/Y komponenter på` under aktiv simulering
 - Beräknade värden visas i egenskapspanelen (flöde, tryck, temp in/ut)
 
-#### Steg 5 – Guidade övningar / scenarion ✳️ NÄSTA
-- Fördefinierade uppgifter: "Bygg en HDS-enhet", "Koppla kylvattensystemet"
-- Verifiering när studenten löst uppgiften rätt
-- Tips och ledtrådar vid fel
-- Bygger på `sequences.js`-infrastrukturen
+#### Steg 5 – Guidade övningar / scenarion ✅ KLART
+- Tre guidade byggövningar: *Enkel pumpsystem*, *Enkel destillationsenhet*, *Pump–separator*
+- `GUIDED_EXERCISES` i `sequences.js` med `place_component`- och `connect_components`-validering
+- Sekvenser-modalen visar nu två sektioner: *Byggövningar* (alltid tillgängliga) och *Uppstartssekvenser*
+- Svårighetsgrads-badge per övning (Enkel/Medel/Svår)
+- `sequenceStepPassing`-flagga förhindrar dubbel-steg-avancering
 
-#### Steg 6 – Prov-Läge (Exam Mode)
+#### Steg 6 – Prov-Läge (Exam Mode) ✳️ NÄSTA
 Examinationsläge där studenten demonstrerar att de verkligen förstår processen — utan hjälp från verktyget.
 
 **Inaktiverat i Prov-Läge:**
