@@ -358,6 +358,13 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Knapp `🎓 Prov-Läge`** i toolbar med röd highlight-stil när aktiv (`#btn-exam-mode.exam-active`)
 - **Examinatorvy:** Examinatorn stänger av Prov-Läge → compat-färger återkommer omedelbart på alla felkopplade rör
 
+### Session 10 – Steg 7: Felsökningsscenarier
+- **5 FAULT_SCENARIOS** definierade i `sequences.js` — 3 befintliga + 2 nya (`pd_pump_failure_scenario`, `control_valve_stuck_scenario`)
+- **`overheat_scenario` buggfix:** Saknade toggle pump + toggle HX + verify_flow efter omstart — lade till 3 steg
+- **`emergency_stop` buggfix:** `activateEmergencyStop()` anropar nu `showSequenceStepSuccess()` direkt om aktuellt steg är `emergency_stop` — intervallet pausas under ESD och detecterar aldrig steget annars
+- **`valve_stuck` buggfix:** `__updateParam` sätter nu `comp.running = true` när `valve_stuck`-felet rensas och öppningsvärdet > 0 — verify_flow passerar nu korrekt
+- **`reset_emergency` fault-rensning:** Dubbelt skydd — `showSequenceStepSuccess` + `advanceSequenceStep` anropar `clearAllFaults()` efter reset_emergency i fault-scenarion
+
 ### Session 8 – Portfixar, Ny Tooltip, Ny Komponent och Batterigräns
 - **Dolda portar fixade (6 Separering-komponenter):** Portpositioner justerade utanför mesh-geometri för `three_phase_separator`, `drum`, `knockout_drum`, `desalter`, `h2s_scrubber`, `mol_sieve_dryer`
 - **H₂S-skrubber `spent_out`:** Ändrad från nedåt-riktad underjordisk port (`[0,-1.05,0]`) till sidodränering på sumpen (`[-0.28,-0.94,0]`, riktning vänster). Munstycksmesh uppdaterad.
@@ -418,10 +425,26 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - Röd banner i 3D-vyn när aktivt; knapp röd-markerad
 - Examinatorvy: stäng av Prov-Läge → alla compat-fel syns direkt
 
+#### Steg 7 – Felsökningsscenarier ✅ KLART
+- **5 felsökningsscenarier** i `sequences.js` (`FAULT_SCENARIOS`):
+  1. **Pumpavbrott** (Enkel) — centrifugalpump havererar, nödstopp, restart
+  2. **Ventil fastnar** (Medel) — slidventil fastnar stängd, manuell override
+  3. **Kolvpump havererar** (Enkel) — PD-pump havererar i högtrycksystem
+  4. **Reglerventil tappar kontroll** (Medel) — automatisk reglerventil fastnar, manuell override
+  5. **Överhettning** (Svår) — värmeväxlare överhettas, nödstopp, temp-justering, restart
+- **Knapp `🔧 Felsökning`** i toolbar öppnar fault-modal med tillgänglighets-check per scenario
+- **Felsökning-panel** återanvänder sekvens-UI (seq-panel) med titel `FELSÖKNING: ...`
+- **Orange pulsande glow** på felaktiga komponenter (`updateFaultVisuals` i animate-loop)
+- **Fault-indikator** i egenskapspanelen när faultad komponent är vald
+- **Viewport glow** (`#viewport.has-faults`) när aktiva fel finns
+- **Buggfixar (session 10):**
+  - `emergency_stop`-steg valideras nu direkt i `activateEmergencyStop()` — intervalll pausas under ESD
+  - `valve_stuck` → `clearFault` sätter nu `comp.running = true` när opening > 0 (verify_flow fungerar)
+  - `reset_emergency`-steg rensar alla fel i `showSequenceStepSuccess` + `advanceSequenceStep` (dubbelt skydd)
+  - `overheat_scenario`: lade till toggle pump + toggle HX + verify_flow efter omstart
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil
-- Nödstopp-simulering (Fas 4): ESD-sekvens
-- Felsökningsscenarier: presentera ett fel, låt studenten hitta orsaken
 - Förbättrad P&ID-export med ISA-symboler
 - Kategori-fix: `heat_exchanger` har inkonsekvent kategorikodning

@@ -191,6 +191,111 @@ const FAULT_SCENARIOS = {
         ]
     },
 
+    pd_pump_failure_scenario: {
+        name: 'Kolvpump havererar',
+        description: 'En kolvpump stannar under drift. Kolvpumpar används för högtrycksflöden — ett plötsligt stopp kan ge farliga trycktoppar.',
+        icon: '⛽',
+        difficulty: 'Enkel',
+        requiredTypes: ['positive_displacement_pump', 'storage_tank'],
+        requiresPipes: true,
+        faults: [
+            { type: 'pump_failure', componentType: 'positive_displacement_pump', componentIndex: 0, delay: 2 }
+        ],
+        steps: [
+            {
+                instruction: 'Starta simuleringen',
+                detail: 'Klicka på "Simulera"-knappen för att aktivera simuleringsläget.',
+                action: { type: 'start_simulation' },
+                targetButton: 'btn-simulate'
+            },
+            {
+                instruction: 'Starta kolvpumpen',
+                detail: 'Dubbelklicka på kolvpumpen för att starta flödet.',
+                action: { type: 'toggle_running', componentType: 'positive_displacement_pump', componentIndex: 0 },
+                targetComponent: { type: 'positive_displacement_pump', index: 0 }
+            },
+            {
+                instruction: 'Identifiera felet',
+                detail: 'Kolvpumpen har stannat! Ett plötsligt pumpstopp i ett högtryckssystem kan orsaka trycktoppar uppströms. Klicka på den felaktiga pumpen (orange glow).',
+                action: { type: 'identify_fault', faultType: 'pump_failure' },
+                hint: 'Kolvpumpen lyser orange — den har havererat.'
+            },
+            {
+                instruction: 'Aktivera nödstopp',
+                detail: 'Tryck på NÖDSTOPP för att isolera systemet och förhindra tryckhöjning.',
+                action: { type: 'emergency_stop' },
+                targetButton: 'btn-emergency'
+            },
+            {
+                instruction: 'Återställ nödstoppet',
+                detail: 'Klicka "Återställ" i nödstopp-dialogen när systemet är säkrat.',
+                action: { type: 'reset_emergency' }
+            },
+            {
+                instruction: 'Starta simuleringen igen',
+                detail: 'Klicka på "Simulera" för att starta om efter kontroll.',
+                action: { type: 'start_simulation' },
+                targetButton: 'btn-simulate'
+            },
+            {
+                instruction: 'Starta kolvpumpen igen',
+                detail: 'Dubbelklicka på kolvpumpen — pumpen är nu utbytt och kan startas.',
+                action: { type: 'toggle_running', componentType: 'positive_displacement_pump', componentIndex: 0 },
+                targetComponent: { type: 'positive_displacement_pump', index: 0 }
+            }
+        ]
+    },
+
+    control_valve_stuck_scenario: {
+        name: 'Reglerventil tappar kontroll',
+        description: 'En automatisk reglerventil fastnar i stängt läge och förlorar processkontrollen. Identifiera, manuellt åsidosätt och återställ flödet.',
+        icon: '◇',
+        difficulty: 'Medel',
+        requiredTypes: ['centrifugal_pump', 'control_valve', 'storage_tank'],
+        requiresPipes: true,
+        faults: [
+            { type: 'valve_stuck', componentType: 'control_valve', componentIndex: 0, delay: 3 }
+        ],
+        steps: [
+            {
+                instruction: 'Starta simuleringen',
+                detail: 'Klicka på "Simulera"-knappen för att aktivera simuleringsläget.',
+                action: { type: 'start_simulation' },
+                targetButton: 'btn-simulate'
+            },
+            {
+                instruction: 'Öppna reglerventilen',
+                detail: 'Dubbelklicka på reglerventilen för att aktivera den.',
+                action: { type: 'toggle_running', componentType: 'control_valve', componentIndex: 0 },
+                targetComponent: { type: 'control_valve', index: 0 }
+            },
+            {
+                instruction: 'Starta pumpen',
+                detail: 'Dubbelklicka på centrifugalpumpen för att starta flödet.',
+                action: { type: 'toggle_running', componentType: 'centrifugal_pump', componentIndex: 0 },
+                targetComponent: { type: 'centrifugal_pump', index: 0 }
+            },
+            {
+                instruction: 'Identifiera problemet',
+                detail: 'Reglerventilen har fastnat stängd! Styrautomatiken har förlorat kontrollen. Klicka på den felaktiga ventilen.',
+                action: { type: 'identify_fault', faultType: 'valve_stuck' },
+                hint: 'Reglerventilen lyser orange — den har fastnat i stängt läge trots styrsignalen.'
+            },
+            {
+                instruction: 'Manuellt åsidosätt ventilen',
+                detail: 'Välj reglerventilen och ändra öppningsgraden till minst 50% i egenskapspanelen. Detta simulerar manuell override av automatiken.',
+                action: { type: 'set_parameter', componentType: 'control_valve', componentIndex: 0, param: 'opening', condition: 'gte', value: 50 },
+                targetComponent: { type: 'control_valve', index: 0 },
+                hint: 'Ändra "Öppning" till minst 50% i egenskapspanelen till höger.'
+            },
+            {
+                instruction: 'Verifiera att flödet återställts',
+                detail: 'Kontrollera att flödespartiklar rör sig igen. Reglerventilen är nu manuellt styrd tills automatiken kan repareras.',
+                action: { type: 'verify_flow' }
+            }
+        ]
+    },
+
     overheat_scenario: {
         name: 'Överhettning',
         description: 'Värmeväxlaren överhettas. Identifiera, nödstopp, justera och starta om.',
@@ -251,8 +356,20 @@ const FAULT_SCENARIOS = {
                 targetButton: 'btn-simulate'
             },
             {
-                instruction: 'Starta pumpen och värmeväxlaren',
-                detail: 'Dubbelklicka på pumpen och värmeväxlaren för att starta systemet igen.',
+                instruction: 'Starta pumpen',
+                detail: 'Dubbelklicka på centrifugalpumpen för att starta flödet.',
+                action: { type: 'toggle_running', componentType: 'centrifugal_pump', componentIndex: 0 },
+                targetComponent: { type: 'centrifugal_pump', index: 0 }
+            },
+            {
+                instruction: 'Starta värmeväxlaren',
+                detail: 'Dubbelklicka på värmeväxlaren för att aktivera den. Temperaturen bör nu vara under kontroll.',
+                action: { type: 'toggle_running', componentType: 'heat_exchanger', componentIndex: 0 },
+                targetComponent: { type: 'heat_exchanger', index: 0 }
+            },
+            {
+                instruction: 'Verifiera att flödet är återställt',
+                detail: 'Kontrollera att partiklar flödar igen. Systemet är nu återstartat under kontrollerade förhållanden.',
                 action: { type: 'verify_flow' }
             }
         ]

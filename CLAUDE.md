@@ -137,12 +137,13 @@ Fas 1, 2 och Fas 3 (steg 1–6) är klara. Applikationen är fullt körbar med:
 - Port-info tooltip vid klick på portar
 - Batterigräns-markörer för inter-anläggningskopplingar
 - **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
+- **Felsökningsscenarier (5 st)** — pumpavbrott, ventil fastnar, kolvpump, reglerventil, överhettning
 - P&ID-export (SVG)
 
 ## Nästa prioriterade steg
 1. Fler guidade övningar (t.ex. bensinavsvavlingsanläggning HDS)
-2. Felsökningsscenarier — presentera ett processfel, studenten diagnostiserar
-3. Förbättrad P&ID-export med ISA-symboler
+2. Förbättrad P&ID-export med ISA-symboler
+3. Fler felsökningsscenarier (läckage-typer, tryckalarm)
 
 ## Prov-Läge (Exam Mode) — Pedagogisk Nyckelfeature
 Separat läge för att examinera studenter utan ledtrådar från verktyget.

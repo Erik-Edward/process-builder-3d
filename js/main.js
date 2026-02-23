@@ -2503,6 +2503,12 @@
         if (fault && fault.type === 'valve_stuck' && key === 'opening') {
             // Clear the fault when user manually overrides the opening
             clearFault(fault.id);
+            // Re-open the valve if setting a positive opening value (manual override = valve now open)
+            if (parseFloat(value) > 0) {
+                comp.running = true;
+                updateRunningVisual(comp);
+                updatePipeParticleVisibility();
+            }
         }
         comp.parameters[key].value = parseFloat(value) || 0;
         if (simulationRunning) simTick();
@@ -4128,6 +4134,14 @@
         }
         updatePipeParticleVisibility();
 
+        // If a sequence step is waiting for emergency_stop, advance it now
+        if (activeSequence && !sequenceCompleted) {
+            const step = activeSequence.steps[sequenceStepIndex];
+            if (step && step.action.type === 'emergency_stop') {
+                showSequenceStepSuccess();
+            }
+        }
+
         // Pause active sequence
         if (sequenceValidationInterval) {
             clearInterval(sequenceValidationInterval);
@@ -4492,6 +4506,14 @@
                         injectFault(faultDef, comp);
                     }
                 }
+            }
+        }
+
+        // After reset_emergency in a fault scenario, clear all faults (simulates maintenance/repair)
+        if (activeSequence && activeSequence.isFaultScenario) {
+            const prevStep = activeSequence.steps[prevStepIndex];
+            if (prevStep && prevStep.action.type === 'reset_emergency') {
+                clearAllFaults();
             }
         }
 
