@@ -137,6 +137,8 @@
     const PORT_COLOR_SELECTED = 0xffee58;  // yellow (pulsing)
     const PIPE_COLOR = 0x888899;
     const PIPE_COLOR_SELECTED = 0xffee58;
+    const PIPE_COLOR_INCOMPAT  = 0xff3333;  // red  – inkompatibel media
+    const PIPE_COLOR_WARNING   = 0xff9900;  // orange – varning (t.ex. fel ångtyp)
 
     // --- Fas 4: Nödstopp state ---
     let emergencyStopActive = false;
@@ -1158,6 +1160,7 @@
             curve: mesh.userData.curve,
             particles: [],
             label: null,
+            compat: { ok: true, level: 'ok', reason: '' },
             computedFlow: 0,
             computedTemp: 25,
             computedPressure: 0
@@ -1181,6 +1184,11 @@
 
         // Create flow particles (visible only during simulation)
         createFlowParticles(pipe);
+
+        // Compatibility check (runs after components are registered)
+        if (media !== 'unknown') {
+            applyPipeCompatColor(pipe);
+        }
 
         invalidateSimGraph();
         return pipe;
@@ -1419,12 +1427,98 @@
         const mediaDef = MEDIA_DEFINITIONS[newMediaKey] || MEDIA_DEFINITIONS.unknown;
         const color = newMediaKey !== 'unknown' ? mediaDef.color : PIPE_COLOR;
         pipe.mesh.material.color.setHex(color);
+        pipe.mesh.material.emissive.setHex(0x000000);
+        pipe.mesh.material.emissiveIntensity = 0;
 
         // Update label
         removePipeLabel(pipe);
         if (newMediaKey !== 'unknown') {
             createPipeLabel(pipe);
         }
+
+        // Compatibility check
+        applyPipeCompatColor(pipe);
+    }
+
+    // =========================================================
+    // MEDIAKOMPABILITETSKONTROLL
+    // =========================================================
+
+    /**
+     * Kontrollerar om pipe-mediat är kompatibelt med de anslutna portarna.
+     * Returnerar { ok, level: 'ok'|'warning'|'error', reason }
+     */
+    function checkPipeCompatibility(pipe) {
+        const media = pipe.media;
+        if (!media || media === 'unknown') return { ok: true, level: 'ok', reason: '' };
+
+        const mediaDef = MEDIA_DEFINITIONS[media];
+        if (!mediaDef) return { ok: true, level: 'ok', reason: '' };
+
+        const fromComp = placedComponents.find(c => c.id === pipe.from.componentId);
+        const toComp   = placedComponents.find(c => c.id === pipe.to.componentId);
+
+        const issues = [];
+
+        for (const [comp, portName] of [[fromComp, pipe.from.portName], [toComp, pipe.to.portName]]) {
+            if (!comp) continue;
+            const portDef = comp.definition.ports[portName];
+            if (!portDef) continue;
+
+            if (portDef.defaultMedia) {
+                if (portDef.defaultMedia === media) continue; // perfekt matchning
+
+                const expectedDef = MEDIA_DEFINITIONS[portDef.defaultMedia];
+                if (!expectedDef) continue;
+
+                // Samma kategori och fas → varning (t.ex. HP-ånga istället för LP-ånga)
+                if (expectedDef.category === mediaDef.category && expectedDef.phase === mediaDef.phase) {
+                    issues.push({ level: 'warning', text: `"${portName}" förväntar ${expectedDef.name}` });
+                } else {
+                    // Annan kategori → fel
+                    issues.push({ level: 'error', text: `"${portName}" förväntar ${expectedDef.name} — fick ${mediaDef.name}` });
+                }
+            } else {
+                // Inget defaultMedia: portnamns-baserad kontroll
+                const pn = portName.toLowerCase();
+                const isGasPort    = /fuel_in|flue_gas|steam_in|steam_out|gas_in|syngas|regen_in|regen_out/.test(pn);
+                const isWaterPort  = /cooling|bfw|brine|water_in/.test(pn);
+                const isAminePort  = /solvent_in|rich_out/.test(pn);
+                const isCausticPort = /caustic_in|spent_out/.test(pn);
+
+                if (isGasPort && mediaDef.phase === 'liquid') {
+                    issues.push({ level: 'warning', text: `"${portName}" förväntar gas — ${mediaDef.name} är vätska` });
+                } else if (isWaterPort && mediaDef.category !== 'Vatten' && mediaDef.category !== 'Utilities') {
+                    issues.push({ level: 'warning', text: `"${portName}" förväntar vatten/utility — fick ${mediaDef.name}` });
+                } else if (isAminePort && !media.startsWith('amine_')) {
+                    issues.push({ level: 'warning', text: `"${portName}" förväntar amin — fick ${mediaDef.name}` });
+                } else if (isCausticPort && media !== 'caustic') {
+                    issues.push({ level: 'warning', text: `"${portName}" förväntar natronlut — fick ${mediaDef.name}` });
+                }
+            }
+        }
+
+        if (issues.length === 0) return { ok: true, level: 'ok', reason: '' };
+        const worstLevel = issues.some(r => r.level === 'error') ? 'error' : 'warning';
+        return { ok: false, level: worstLevel, reason: issues.map(r => r.text).join(' | ') };
+    }
+
+    /**
+     * Tillämpar rätt färg på pipens mesh baserat på kompatibilitetsstatus.
+     * Returnerar kompatibilitetsresultatet.
+     */
+    function applyPipeCompatColor(pipe) {
+        const compat = checkPipeCompatibility(pipe);
+        pipe.compat = compat;
+
+        if (!compat.ok) {
+            const color = compat.level === 'error' ? PIPE_COLOR_INCOMPAT : PIPE_COLOR_WARNING;
+            pipe.mesh.material.color.setHex(color);
+            pipe.mesh.material.emissive.setHex(compat.level === 'error' ? 0x440000 : 0x331500);
+            pipe.mesh.material.emissiveIntensity = 0.25;
+        }
+        // If ok: color was already set correctly by updatePipeMedia/createPipe caller
+        return compat;
     }
 
     // --- Pipe branching (Tee) ---
@@ -1543,6 +1637,7 @@
             particles: [],
             label: null,
             teeMarker: null,
+            compat: { ok: true, level: 'ok', reason: '' },
             computedFlow: 0,
             computedTemp: 25,
             computedPressure: 0
@@ -1580,6 +1675,12 @@
         updatePortMarkerColor(toComp, toPort);
 
         createFlowParticles(pipe);
+
+        // Compatibility check
+        if (media !== 'unknown') {
+            applyPipeCompatColor(pipe);
+        }
+
         invalidateSimGraph();
         return pipe;
     }
@@ -1744,6 +1845,26 @@
                     <button class="prop-toggle-btn" onclick="window.__changePipeMedia(${pipe.id})" style="background:var(--bg-card);">Ändra media</button>
                 </div>
             </div>`;
+
+        // Compatibility status
+        const compat = pipe.compat || checkPipeCompatibility(pipe);
+        if (!compat.ok) {
+            const isError = compat.level === 'error';
+            const icon    = isError ? '✕' : '⚠';
+            const bg      = isError ? 'rgba(255,50,50,0.12)' : 'rgba(255,150,0,0.12)';
+            const border  = isError ? 'rgba(255,50,50,0.4)'  : 'rgba(255,150,0,0.4)';
+            const color   = isError ? '#ff6666' : '#ffaa33';
+            html += `
+            <div class="prop-group" style="border:1px solid ${border};background:${bg};border-radius:7px;padding:10px 12px;margin-top:4px;">
+                <div class="prop-group-title" style="color:${color};">${icon} ${isError ? 'Inkompatibel media' : 'Varning'}</div>
+                <div style="font-size:11px;color:${color};line-height:1.5;">${compat.reason}</div>
+            </div>`;
+        } else if (pipe.media && pipe.media !== 'unknown') {
+            html += `
+            <div class="prop-group" style="border:1px solid rgba(80,200,80,0.3);background:rgba(80,200,80,0.08);border-radius:7px;padding:8px 12px;margin-top:4px;">
+                <div class="prop-group-title" style="color:#66cc66;">✓ Kompatibel</div>
+            </div>`;
+        }
 
         el.innerHTML = html;
     }
@@ -2069,14 +2190,21 @@
 
         function finalizePipe(mediaKey) {
             pushUndo();
+            const mediaDef = MEDIA_DEFINITIONS[mediaKey] || MEDIA_DEFINITIONS.unknown;
+            let newPipe;
             if (isBranch) {
-                createBranchPipe(branchFromPipeId, branchTeePoint, branchTeeParam, toComp, toPort, wpClone, mediaKey);
-                const mediaDef = MEDIA_DEFINITIONS[mediaKey] || MEDIA_DEFINITIONS.unknown;
+                newPipe = createBranchPipe(branchFromPipeId, branchTeePoint, branchTeeParam, toComp, toPort, wpClone, mediaKey);
+            } else {
+                newPipe = createPipe(fromComp, fromPort, toComp, toPort, wpClone, mediaKey);
+            }
+            // Show compatibility result in status bar
+            if (newPipe && newPipe.compat && !newPipe.compat.ok) {
+                const prefix = newPipe.compat.level === 'error' ? '✕ Inkompatibel:' : '⚠ Varning:';
+                setStatus(`${prefix} ${newPipe.compat.reason}`);
+            } else if (isBranch) {
                 setStatus(`Förgrening → ${toComp.definition.name}:${toPort} (${mediaDef.name})`);
             } else {
-                createPipe(fromComp, fromPort, toComp, toPort, wpClone, mediaKey);
-                const mediaDef = MEDIA_DEFINITIONS[mediaKey] || MEDIA_DEFINITIONS.unknown;
-                setStatus(`Kopplat ${fromComp.definition.name}:${fromPort} → ${toComp.definition.name}:${toPort} (${mediaDef.name})`);
+                setStatus(`✓ Kopplat ${fromComp.definition.name}:${fromPort} → ${toComp.definition.name}:${toPort} (${mediaDef.name})`);
             }
         }
 
@@ -2338,6 +2466,14 @@
             updatePipeMedia(pipe, mediaKey);
             if (selectedPipe && selectedPipe.id === pipeId) {
                 showPipeProperties(pipe);
+            }
+            // Show compatibility result in status bar
+            if (pipe.compat && !pipe.compat.ok) {
+                const prefix = pipe.compat.level === 'error' ? '✕ Inkompatibel:' : '⚠ Varning:';
+                setStatus(`${prefix} ${pipe.compat.reason}`);
+            } else {
+                const mediaDef = MEDIA_DEFINITIONS[mediaKey] || MEDIA_DEFINITIONS.unknown;
+                setStatus(`✓ Media ändrad till ${mediaDef.name}`);
             }
         });
     };

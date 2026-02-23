@@ -307,6 +307,18 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Sparas och laddas** med processen (JSON export/import + localStorage + undo/redo)
 - Städas korrekt vid: Radera komponent, Rensa allt, Ladda process, Ångra/Gör om
 
+### Session 6 (forts.) – Steg 3: Mediakompabilitetskontroll
+- **`checkPipeCompatibility(pipe)`** – kontrollerar mot `defaultMedia` på porter (primärt)
+  och portnamns-mönster (sekundärt: fuel_in, steam_in/out, cooling, amine, caustic, etc.)
+- **Två feltyper:** `error` (annan kategori/fas, t.ex. kylvatten till bränngas-port) och
+  `warning` (samma kategori men annan variant, t.ex. HP-ånga istället för LP-ånga)
+- **`applyPipeCompatColor(pipe)`** – röd (#ff3333) vid error, orange (#ff9900) vid warning
+  med svag emissive-glöd; återgår till medias normalfärg när kompatibelt
+- **Egenskapspanelen** – visar röd/orange block med beskrivande feltext, eller grön
+  "✓ Kompatibel"-bekräftelse vid korrekt media
+- **Statusraden** – visar "✕ Inkompatibel: …" eller "⚠ Varning: …" direkt när
+  rör skapas (manuellt och auto) eller media ändras via "Ändra media"
+
 ---
 
 ## Planerat / Framtida Arbete
@@ -326,13 +338,13 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - Redigerbara via egenskapspanelen
 - Exporteras med processen (sparas i JSON)
 
-#### Steg 3 – Mediakompabilitetskontroll ✳️ NÄSTA
+#### Steg 3 – Mediakompabilitetskontroll ✅ KLART
 - Varning (röd highlight) om inkompatibla mediatyper kopplas ihop
   (t.ex. råolja → aminabsorber, kylvatten → rörledning märkt H₂S)
 - Grön bekräftelse vid kompatibel koppling
 - Kompabilitetstabell definieras per komponenttyp
 
-#### Steg 4 – Enkel flödessimulering
+#### Steg 4 – Enkel flödessimulering ✳️ NÄSTA
 - Animerade flödespilar längs aktiva rörledningar
 - On/off-status per komponent (dubbelklick)
 - Temperatur-/tryckfärg på rör (blå=kallt, röd=varmt)
