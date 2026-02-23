@@ -645,6 +645,12 @@
             redo();
             return;
         }
+        // Block 3D hotkeys when user is typing in a text/number input field
+        // (Escape is still allowed so the user can cancel/blur)
+        const targetTag = e.target.tagName;
+        if ((targetTag === 'INPUT' || targetTag === 'TEXTAREA') && !e.ctrlKey && !e.metaKey) {
+            if (e.key !== 'Escape') return;
+        }
         // Space = nödstopp during simulation
         if (e.key === ' ' && simulationRunning && !emergencyStopActive) {
             e.preventDefault();
@@ -3128,8 +3134,9 @@
             setStatus(`▶ Simulering — ${runningCount}/${placedComponents.length} komponenter på (dubbelklicka för att slå av/på)`);
         }
 
-        // Refresh properties panel if a component is selected
-        if (selectedPlacedComponent) showProperties(selectedPlacedComponent);
+        // Update only the computed-values section (avoids rebuilding the whole panel,
+        // which would break button clicks mid-interaction)
+        if (selectedPlacedComponent) updatePropertiesComputedSection(selectedPlacedComponent);
     }
 
     function resetPipeMeshColor(pipe) {
@@ -3173,6 +3180,11 @@
 
     function startSimTick() {
         if (simInterval) clearInterval(simInterval);
+        // Auto-start all components when simulation begins
+        for (const comp of placedComponents) {
+            comp.running = true;
+            updateRunningVisual(comp);
+        }
         buildSimGraph();
         simInterval = setInterval(simTick, SIM_TICK_MS);
         simTick(); // run immediately
@@ -3245,7 +3257,7 @@
         // Show computed values when simulation is running
         if (simulationRunning && comp.computed && Object.keys(comp.computed).length > 0) {
             const c = comp.computed;
-            html += `<div class="prop-group">
+            html += `<div class="prop-group" id="prop-computed-section">
                 <div class="prop-group-title" style="color: #4fc3f7;">Beräknade värden</div>`;
             if (c.flowIn !== undefined)
                 html += `<div class="prop-row"><span class="prop-label">Flöde in</span><span class="prop-value computed">${c.flowIn.toFixed(1)} m³/h</span></div>`;
@@ -3266,6 +3278,30 @@
         }
 
         el.innerHTML = html;
+    }
+
+    /** Updates only the computed-values section in the properties panel (safe to call from simTick). */
+    function updatePropertiesComputedSection(comp) {
+        if (!comp || !simulationRunning) return;
+        const section = document.getElementById('prop-computed-section');
+        if (!section) return;
+        const c = comp.computed || {};
+        let html = `<div class="prop-group-title" style="color: #4fc3f7;">Beräknade värden</div>`;
+        if (c.flowIn !== undefined)
+            html += `<div class="prop-row"><span class="prop-label">Flöde in</span><span class="prop-value computed">${c.flowIn.toFixed(1)} m³/h</span></div>`;
+        if (c.flowOut !== undefined)
+            html += `<div class="prop-row"><span class="prop-label">Flöde ut</span><span class="prop-value computed">${c.flowOut.toFixed(1)} m³/h</span></div>`;
+        if (c.pressureIn !== undefined)
+            html += `<div class="prop-row"><span class="prop-label">Tryck in</span><span class="prop-value computed">${c.pressureIn.toFixed(2)} bar</span></div>`;
+        if (c.pressureOut !== undefined)
+            html += `<div class="prop-row"><span class="prop-label">Tryck ut</span><span class="prop-value computed">${c.pressureOut.toFixed(2)} bar</span></div>`;
+        if (c.tempIn !== undefined)
+            html += `<div class="prop-row"><span class="prop-label">Temp in</span><span class="prop-value computed">${c.tempIn.toFixed(1)} °C</span></div>`;
+        if (c.tempOut !== undefined)
+            html += `<div class="prop-row"><span class="prop-label">Temp ut</span><span class="prop-value computed">${c.tempOut.toFixed(1)} °C</span></div>`;
+        if (comp.definition.type === 'tank' && comp.parameters.level)
+            html += `<div class="prop-row"><span class="prop-label">Nivå</span><span class="prop-value computed">${comp.parameters.level.value.toFixed(1)} %</span></div>`;
+        section.innerHTML = html;
     }
 
     function clearProperties() {
