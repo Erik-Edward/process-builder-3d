@@ -125,17 +125,36 @@ process-builder-3d/
 ```
 
 ## Aktuell Status
-Fas 1 och Fas 2 är i stort sett klara. Applikationen är fullt körbar med:
+Fas 1, 2 och delar av Fas 3 är klara. Applikationen är fullt körbar med:
 - 52 komponenter med detaljerade 3D-modeller
 - 31 mediatyper, automatiskt mediaval på ~30 portar
 - Manuell och auto-koppling av rörledningar
+- Spara/ladda (namngivna slots, JSON export/import)
+- Komponentetiketter (taggnummer) i 3D-vyn
+- Mediakompabilitetskontroll med röd/orange feedback
 - P&ID-export (SVG)
 
 ## Nästa prioriterade steg
-1. Spara/ladda processer via LocalStorage
-2. Mediakompabilitetskontroll vid koppling
-3. Komponentetiketter (tag-nummer) i 3D-vyn
-4. Enkel flödessimulering (Fas 3)
+1. Enkel flödessimulering (Fas 3) — animerade partiklar, on/off, temperaturvisning
+2. Guidade övningar / scenarion (Fas 3)
+3. **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
+
+## Prov-Läge (Exam Mode) — Pedagogisk Nyckelfeature
+Separat läge för att examinera studenter utan ledtrådar från verktyget.
+
+**Princip:** Lärläge = verktyget hjälper. Prov-Läge = studenten visar att de kan.
+
+**Inaktiveras i Prov-Läge:**
+- Mediakompabilitetskontroll (inga röda/orangea rör)
+- Automatiskt mediaval (defaultMedia ignoreras — allt väljs manuellt)
+- Auto-koppling av portar (snap-to-connect av)
+- Pipe-mediabeteckningar (labels döljs)
+
+**Examinatorvy:** Examinatorn öppnar studentens sparade process i normalt lärläge —
+alla felkopplingar syns omedelbart som röda/orangea rör.
+
+**Implementation:** `examMode` boolean-flagga, toggle-knapp i toolbar (`🎓 Prov-Läge`).
+Detaljer i PROGRESS.md Steg 6.
 
 ## Övrig Information
 Detaljerad projektstatus, arbetslogg och komponentöversikt finns i PROGRESS.md

@@ -356,6 +356,32 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - Tips och ledtrådar vid fel
 - Bygger på `sequences.js`-infrastrukturen
 
+#### Steg 6 – Prov-Läge (Exam Mode)
+Examinationsläge där studenten demonstrerar att de verkligen förstår processen — utan hjälp från verktyget.
+
+**Inaktiverat i Prov-Läge:**
+- Mediakompabilitetskontroll (inga röda/orangea rör)
+- Automatiskt mediaval (`defaultMedia` hoppar inte modalen — studenten väljer allt manuellt)
+- Auto-koppling av närliggande portar (snap-to-connect inaktivt)
+- Pipe-mediabeteckningar (labels döljs — studenten ser inte bekräftelsen)
+
+**Aktivt i Prov-Läge:**
+- All normal byggfunktionalitet (placera, flytta, koppla, rotera)
+- Spara/ladda (för inlämning av provarbete)
+- P&ID-export (för granskning av examinator/lärare)
+- Taggnummer på komponenter
+
+**Examinatorvy:** Examinatorn öppnar den sparade processen i normalt lärläge → alla
+inkompatibla kopplingar syns direkt som röda/orangea rör. Korrekt byggd anläggning = inga varningar.
+
+**Implementation:**
+- Toggle-knapp i toolbar: `[🎓 Prov-Läge]` — tydlig visuell indikation när aktivt
+- `examMode` boolean-flagga i app-state
+- `resolvePortDefaultMedia()` returnerar null i examMode
+- `applyPipeCompatColor()` hoppar sin logik i examMode
+- `detectNearbyPorts()` returnerar [] i examMode
+- Pipe-labels döljs (sprite.visible = !examMode)
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil
