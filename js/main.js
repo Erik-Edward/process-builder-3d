@@ -2830,10 +2830,13 @@
 
         for (let i = 0; i < pipes.length; i++) {
             const p = pipes[i];
-            adjOut.get(p.from.componentId).push({
-                pipeIdx: i, toId: p.to.componentId,
-                fromPort: p.from.portName, toPort: p.to.portName
-            });
+            // Branch pipes have no real "from" component – skip in adjOut
+            if (p.from.componentId !== '__branch') {
+                adjOut.get(p.from.componentId).push({
+                    pipeIdx: i, toId: p.to.componentId,
+                    fromPort: p.from.portName, toPort: p.to.portName
+                });
+            }
             adjIn.get(p.to.componentId).push({
                 pipeIdx: i, fromId: p.from.componentId,
                 fromPort: p.from.portName, toPort: p.to.portName
@@ -2844,6 +2847,8 @@
         const inDegree = new Map();
         for (const id of compIds) inDegree.set(id, 0);
         for (const p of pipes) {
+            // Branch pipes don't represent a real upstream component – skip
+            if (p.from.componentId === '__branch') continue;
             inDegree.set(p.to.componentId, (inDegree.get(p.to.componentId) || 0) + 1);
         }
 
@@ -2897,6 +2902,18 @@
 
         // Run propagation (2 passes to handle cycles)
         for (let pass = 0; pass < 2; pass++) {
+            // Propagate branch pipe values from their parent pipes
+            for (const pipe of pipes) {
+                if (pipe.from.componentId === '__branch' && pipe.branchFrom) {
+                    const parentPipe = pipes.find(pp => pp.id === pipe.branchFrom.pipeId);
+                    if (parentPipe) {
+                        pipe.computedFlow     = parentPipe.computedFlow;
+                        pipe.computedTemp     = parentPipe.computedTemp;
+                        pipe.computedPressure = parentPipe.computedPressure;
+                    }
+                }
+            }
+
             for (const compId of simGraph.sorted) {
                 const comp = placedComponents.find(c => c.id === compId);
                 if (!comp) continue;
@@ -3044,6 +3061,41 @@
                     comp.computed.tempOut = avgTempIn;
                     continue;
 
+                } else if (defType === 'separator') {
+                    const subtype = comp.definition.subtype;
+                    if (subtype === 'three_phase') {
+                        // Split: gas 30%, oil 40%, water 30%
+                        for (const edge of outEdges) {
+                            const p = pipes[edge.pipeIdx];
+                            if (edge.fromPort === 'gas_out') {
+                                p.computedFlow = totalFlowIn * 0.30;
+                                p.computedTemp = avgTempIn - 5;
+                                p.computedPressure = maxPressureIn * 0.97;
+                            } else if (edge.fromPort === 'oil_out') {
+                                p.computedFlow = totalFlowIn * 0.40;
+                                p.computedTemp = avgTempIn;
+                                p.computedPressure = maxPressureIn * 0.95;
+                            } else if (edge.fromPort === 'water_out') {
+                                p.computedFlow = totalFlowIn * 0.30;
+                                p.computedTemp = avgTempIn - 2;
+                                p.computedPressure = maxPressureIn * 0.95;
+                            } else {
+                                p.computedFlow = totalFlowIn / Math.max(1, outEdges.length);
+                                p.computedTemp = avgTempIn;
+                                p.computedPressure = maxPressureIn * 0.95;
+                            }
+                        }
+                        comp.computed.flowOut     = totalFlowIn;
+                        comp.computed.pressureOut = maxPressureIn * 0.95;
+                        comp.computed.tempOut     = avgTempIn;
+                        continue;
+                    } else {
+                        // Simple separator / filter: pass through with pressure drop
+                        flowOut = totalFlowIn;
+                        pressureOut = maxPressureIn * 0.95;
+                        tempOut = avgTempIn;
+                    }
+
                 } else {
                     // Generic pass-through
                     flowOut = totalFlowIn;
@@ -3067,11 +3119,33 @@
             }
         }
 
-        // Update pipe particle colors from computed temperatures
+        // Update pipe particle colors and mesh colors from computed temperatures
         updatePipeColorsFromComputed();
+
+        // Update status bar with simulation summary
+        const runningCount = placedComponents.filter(c => c.running).length;
+        if (placedComponents.length > 0) {
+            setStatus(`▶ Simulering — ${runningCount}/${placedComponents.length} komponenter på (dubbelklicka för att slå av/på)`);
+        }
 
         // Refresh properties panel if a component is selected
         if (selectedPlacedComponent) showProperties(selectedPlacedComponent);
+    }
+
+    function resetPipeMeshColor(pipe) {
+        if (!pipe.mesh || !pipe.mesh.material) return;
+        if (pipe.compat && !pipe.compat.ok) {
+            const col = pipe.compat.level === 'error' ? PIPE_COLOR_INCOMPAT : PIPE_COLOR_WARNING;
+            pipe.mesh.material.color.setHex(col);
+            pipe.mesh.material.emissive.setHex(pipe.compat.level === 'error' ? 0x440000 : 0x331500);
+            pipe.mesh.material.emissiveIntensity = 0.25;
+        } else {
+            const mediaDef = MEDIA_DEFINITIONS[pipe.media] || MEDIA_DEFINITIONS.unknown;
+            const col = pipe.media !== 'unknown' ? mediaDef.color : PIPE_COLOR;
+            pipe.mesh.material.color.setHex(col);
+            pipe.mesh.material.emissive.setHex(0x000000);
+            pipe.mesh.material.emissiveIntensity = 0;
+        }
     }
 
     function updatePipeColorsFromComputed() {
@@ -3081,6 +3155,18 @@
             for (const p of pipe.particles) {
                 p.material.color.copy(color);
                 p.material.emissive.copy(color);
+            }
+            // Color the pipe mesh by temperature when it is carrying flow
+            if (pipe.mesh && pipe.mesh.material) {
+                const flowing = isPipeFlowing(pipe) && pipe.computedFlow > 0;
+                if (flowing) {
+                    pipe.mesh.material.color.copy(color);
+                    const intensity = Math.min(0.4, Math.max(0, (pipe.computedTemp - 25) / 150));
+                    pipe.mesh.material.emissive.copy(color);
+                    pipe.mesh.material.emissiveIntensity = intensity;
+                } else {
+                    resetPipeMeshColor(pipe);
+                }
             }
         }
     }
@@ -3099,6 +3185,10 @@
         }
         clearComputedValues();
         simGraph = null;
+        // Reset all pipe mesh colors back to media/compat colors
+        for (const pipe of pipes) {
+            resetPipeMeshColor(pipe);
+        }
     }
 
     // --- Properties panel ---

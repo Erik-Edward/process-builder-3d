@@ -307,6 +307,20 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **Sparas och laddas** med processen (JSON export/import + localStorage + undo/redo)
 - Städas korrekt vid: Radera komponent, Rensa allt, Ladda process, Ångra/Gör om
 
+### Session 7 – Steg 4: Enkel flödessimulering (buggfixar + förbättringar)
+- **Buggfix `buildSimGraph`:** Branch pipes (T-kopplingar, `from.componentId === '__branch'`)
+  kraschade med TypeError när `adjOut.get('__branch')` returnerade undefined.
+  Fix: guarda mot `'__branch'` i adjOut-loop och hoppa över dem i Kahn's in-degree-beräkning
+- **Branch pipe propagation:** I varje sim-tick (per pass) ärvs `computedFlow/Temp/Pressure`
+  direkt från parent pipe via `pipe.branchFrom.pipeId`
+- **Temperaturfärgade pipe mesh:** `updatePipeColorsFromComputed()` sätter nu
+  `pipe.mesh.material.color` + emissive baserat på temperaturkarta (blå→röd) när flödande;
+  `resetPipeMeshColor(pipe)` återställer media/compat-färg vid stopp eller ingen flöde
+- **Pipe-färg återställs:** `stopSimTick()` anropar `resetPipeMeshColor()` på alla rör
+- **Separator-hantering i simTick:** Trefasseparator splittar gas/olja/vatten; filter och
+  enkel separator har 5% tryckfall i pass-through
+- **Statusrad under simulering:** `▶ Simulering — X/Y komponenter på`
+
 ### Session 6 (forts.) – Steg 3: Mediakompabilitetskontroll
 - **`checkPipeCompatibility(pipe)`** – kontrollerar mot `defaultMedia` på porter (primärt)
   och portnamns-mönster (sekundärt: fuel_in, steam_in/out, cooling, amine, caustic, etc.)
@@ -344,13 +358,19 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - Grön bekräftelse vid kompatibel koppling
 - Kompabilitetstabell definieras per komponenttyp
 
-#### Steg 4 – Enkel flödessimulering ✳️ NÄSTA
-- Animerade flödespilar längs aktiva rörledningar
-- On/off-status per komponent (dubbelklick)
-- Temperatur-/tryckfärg på rör (blå=kallt, röd=varmt)
-- Grundläggande processparametrar i egenskapspanelen
+#### Steg 4 – Enkel flödessimulering ✅ KLART
+- Animerade flödespartiklar längs aktiva rörledningar (speed ∝ flöde)
+- On/off-status per komponent (dubbelklick), visuell glöd på körande komponenter
+- **Temperaturfärgade rör:** pipe mesh ändrar färg blå→cyan→gul→orange→röd baserat på beräknad temperatur under simulering; återgår till medias normalfärg när simulering stoppar
+- Dynamisk simuleringsgraf (topologisk sortering, Kahn's algorithm)
+- `simTick()` var 200 ms: propagerar flöde/tryck/temperatur längs grafen
+- **Fix:** Branch pipes (T-kopplingar med `from.__branch`) kraschar inte längre i buildSimGraph
+- **Fix:** Branch pipes ärver flöde/temp/tryck från parent pipe i varje tick
+- **Separator-hantering:** Trefasseparator delar flödet gas 30%/olja 40%/vatten 30%; enkel separator/filter med tryckfall 5%
+- **Statusrad** visar `▶ Simulering — X/Y komponenter på` under aktiv simulering
+- Beräknade värden visas i egenskapspanelen (flöde, tryck, temp in/ut)
 
-#### Steg 5 – Guidade övningar / scenarion
+#### Steg 5 – Guidade övningar / scenarion ✳️ NÄSTA
 - Fördefinierade uppgifter: "Bygg en HDS-enhet", "Koppla kylvattensystemet"
 - Verifiering när studenten löst uppgiften rätt
 - Tips och ledtrådar vid fel
