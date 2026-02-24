@@ -4878,5 +4878,221 @@ const COMPONENT_DEFINITIONS = {
 
             return group;
         }
+    },
+
+    // --- Koalescer ---
+    coalescer: {
+        type: 'vessel',
+        subtype: 'coalescer',
+        name: 'Koalescer',
+        icon: '⊕',
+        category: 'Separering',
+        description: 'Vertikal koalescer för separation av vatten från gasolin/nafta',
+        ports: {
+            feed_in:     { position: [-0.42, 0.4, 0],  direction: [-1, 0, 0], type: 'liquid_in',  defaultMedia: 'cracked_gasoline' },
+            product_out: { position: [0, 1.05, 0],      direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'two_phase_hc' },
+            relief_out:  { position: [0.42, 0.7, 0],   direction: [1, 0, 0],  type: 'liquid_out', defaultMedia: 'flare_gas' },
+            water_out:   { position: [0, -0.85, 0.32],  direction: [0, 0, 1],  type: 'liquid_out', defaultMedia: 'sour_water' }
+        },
+        parameters: {
+            pressure:   { value: 10, unit: 'bar', label: 'Tryck' },
+            temp:       { value: 60, unit: '°C',  label: 'Temperatur' },
+            efficiency: { value: 99, unit: '%',   label: 'Vattensep. effektivitet' }
+        },
+        color: 0x78909c,
+        buildMesh(THREE) {
+            const group  = new THREE.Group();
+            const mat    = new THREE.MeshStandardMaterial({ color: this.color });
+            const capMat = new THREE.MeshStandardMaterial({ color: 0x90a4ae });
+            const nMat   = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+
+            // Main vertical cylinder body (center at y=0.05, spans y=-0.60 to y=0.70)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.28, 0.28, 1.30, 24),
+                mat
+            );
+            body.position.y = 0.05;
+            group.add(body);
+
+            // Hemisphere top cap (equator at y=0.70, extends to y=0.98)
+            const topCap = new THREE.Mesh(
+                new THREE.SphereGeometry(0.28, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+                capMat
+            );
+            topCap.position.y = 0.70;
+            group.add(topCap);
+
+            // Hemisphere bottom cap (inverted, equator at y=-0.60, extends to y=-0.88)
+            const botCap = new THREE.Mesh(
+                new THREE.SphereGeometry(0.28, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+                capMat
+            );
+            botCap.rotation.z = Math.PI;
+            botCap.position.y = -0.60;
+            group.add(botCap);
+
+            // Support legs (3 evenly spaced)
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x455a64 });
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2;
+                const leg = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.025, 0.025, 0.30, 6),
+                    legMat
+                );
+                leg.position.set(Math.cos(angle) * 0.22, -1.03, Math.sin(angle) * 0.22);
+                group.add(leg);
+            }
+
+            // Feed inlet nozzle (side, near top)
+            const feedN = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.18, 8), nMat);
+            feedN.rotation.z = Math.PI / 2;
+            feedN.position.set(-0.35, 0.4, 0);
+            group.add(feedN);
+
+            // Product outlet nozzle (top center)
+            const prodN = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8), nMat);
+            prodN.position.set(0, 0.88, 0);
+            group.add(prodN);
+
+            // Relief / safety valve nozzle (upper side) + red RV body
+            const rvNoz = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.18, 8), nMat);
+            rvNoz.rotation.z = Math.PI / 2;
+            rvNoz.position.set(0.35, 0.7, 0);
+            group.add(rvNoz);
+            const rvBody = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.075, 0.075, 0.07, 8),
+                new THREE.MeshStandardMaterial({ color: 0xe53935 })
+            );
+            rvBody.rotation.z = Math.PI / 2;
+            rvBody.position.set(0.49, 0.7, 0);
+            group.add(rvBody);
+
+            // Sour water outlet nozzle (bottom, exits in Z direction to avoid going below grid)
+            const waterN = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.22, 8), nMat);
+            waterN.rotation.x = Math.PI / 2;
+            waterN.position.set(0, -0.85, 0.22);
+            group.add(waterN);
+
+            return group;
+        }
+    },
+
+    // --- Rekontakteringstank ---
+    recontacting_absorber_drum: {
+        type: 'vessel',
+        subtype: 'recontacting_drum',
+        name: 'Rekontakteringstank',
+        icon: '⊗',
+        category: 'Separering',
+        description: 'Horisontell rekontakteringstank med absorptionstorn och survattenpotta',
+        ports: {
+            gas_in:      { position: [-0.20, 0.32, 0],  direction: [0, 1, 0],  type: 'liquid_in',  defaultMedia: 'two_phase_hc' },
+            naphtha_in:  { position: [0.58, 0.90, 0],   direction: [1, 0, 0],  type: 'liquid_in',  defaultMedia: 'raw_gasoline' },
+            gas_out:     { position: [0.42, 1.22, 0],   direction: [0, 1, 0],  type: 'liquid_out', defaultMedia: 'recycle_gas' },
+            naphtha_out: { position: [0.20, -0.32, 0],  direction: [0, -1, 0], type: 'liquid_out', defaultMedia: 'raw_gasoline' },
+            water_out:   { position: [-0.35, -0.78, 0], direction: [0, -1, 0], type: 'liquid_out', defaultMedia: 'sour_water' }
+        },
+        parameters: {
+            pressure:   { value: 12, unit: 'bar', label: 'Tryck' },
+            temp:       { value: 45, unit: '°C',  label: 'Temperatur' },
+            h2sRemoval: { value: 98, unit: '%',   label: 'H₂S-reduktion' }
+        },
+        color: 0x607d8b,
+        buildMesh(THREE) {
+            const group    = new THREE.Group();
+            const mat      = new THREE.MeshStandardMaterial({ color: this.color });
+            const capMat   = new THREE.MeshStandardMaterial({ color: 0x78909c });
+            const nMat     = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+
+            // Horizontal drum body (spans x: -0.70 to +0.70, y: -0.28 to +0.28)
+            const body = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.28, 0.28, 1.40, 24),
+                mat
+            );
+            body.rotation.z = Math.PI / 2;
+            group.add(body);
+
+            // Drum end caps
+            for (const x of [-0.70, 0.70]) {
+                const cap = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.28, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+                    capMat
+                );
+                cap.rotation.z = x < 0 ? Math.PI / 2 : -Math.PI / 2;
+                cap.position.x = x;
+                group.add(cap);
+            }
+
+            // Saddle supports
+            const saddleMat = new THREE.MeshStandardMaterial({ color: 0x455a64 });
+            for (const x of [-0.35, 0.35]) {
+                const saddle = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.08, 0.22, 0.45),
+                    saddleMat
+                );
+                saddle.position.set(x, -0.36, 0);
+                group.add(saddle);
+            }
+
+            // Vertical absorber tower on right side (center at x=0.42, y=0.68, spans y: 0.28 to 1.08)
+            const towerMat = new THREE.MeshStandardMaterial({ color: 0x9575cd, transparent: true, opacity: 0.85 });
+            const tower = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.12, 0.80, 16),
+                towerMat
+            );
+            tower.position.set(0.42, 0.68, 0);
+            group.add(tower);
+
+            // Tower packing (wireframe)
+            const packing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.10, 0.10, 0.50, 12, 3, true),
+                new THREE.MeshStandardMaterial({ color: 0xb39ddb, wireframe: true })
+            );
+            packing.position.set(0.42, 0.60, 0);
+            group.add(packing);
+
+            // Tower top hemisphere (equator at y=1.08, extends to y=1.20)
+            const towerTop = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+                capMat
+            );
+            towerTop.position.set(0.42, 1.08, 0);
+            group.add(towerTop);
+
+            // Sour water boot below drum (center at x=-0.35, y=-0.47, spans y: -0.28 to -0.66)
+            const boot = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.09, 0.09, 0.38, 12),
+                new THREE.MeshStandardMaterial({ color: 0x607d8b })
+            );
+            boot.position.set(-0.35, -0.47, 0);
+            group.add(boot);
+
+            // Boot bottom hemisphere (inverted, equator at y=-0.66, extends to y=-0.75)
+            const bootBot = new THREE.Mesh(
+                new THREE.SphereGeometry(0.09, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                capMat
+            );
+            bootBot.rotation.z = Math.PI;
+            bootBot.position.set(-0.35, -0.66, 0);
+            group.add(bootBot);
+
+            // Gas inlet nozzle (drum top, left of tower)
+            const gasInN = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.16, 8), nMat);
+            gasInN.position.set(-0.20, 0.34, 0);
+            group.add(gasInN);
+
+            // Naphtha inlet nozzle (tower side near top)
+            const naphthaInN = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.16, 8), nMat);
+            naphthaInN.rotation.z = Math.PI / 2;
+            naphthaInN.position.set(0.54, 0.90, 0);
+            group.add(naphthaInN);
+
+            // Naphtha outlet nozzle (drum bottom)
+            const naphthaOutN = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.16, 8), nMat);
+            naphthaOutN.position.set(0.20, -0.34, 0);
+            group.add(naphthaOutN);
+
+            return group;
+        }
     }
 };

@@ -66,7 +66,7 @@ process-builder-3d/
 ├── js/
 │   ├── main.js                # Appens motor: scen, kopplingar, media-modal,
 │   │                          # simulering, sekvenser, port-tooltip
-│   ├── components.js          # 55 komponentdefinitioner med 3D-geometri
+│   ├── components.js          # 57 komponentdefinitioner med 3D-geometri
 │   │                          # och defaultMedia på portar
 │   ├── componentLibrary.js    # Vänster panel: 13 kategorier, sökning, kort
 │   ├── media.js               # 31 mediatyper (färg, fas, faroklass)
@@ -125,9 +125,9 @@ process-builder-3d/
 ```
 
 ## Aktuell Status
-Fas 1, 2 och Fas 3 (steg 1–6) är klara. Applikationen är fullt körbar med:
-- 55 komponenter med detaljerade 3D-modeller (13 kategorier inkl. Anslutningar)
-- 31 mediatyper, automatiskt mediaval på ~30 portar
+Fas 1, 2 och Fas 3 (steg 1–8) är klara. Applikationen är fullt körbar med:
+- 57 komponenter med detaljerade 3D-modeller (13 kategorier inkl. Anslutningar)
+- 31 mediatyper, automatiskt mediaval på ~37 portar
 - Manuell och auto-koppling av rörledningar
 - Spara/ladda (namngivna slots, JSON export/import)
 - Komponentetiketter (taggnummer) i 3D-vyn
@@ -138,12 +138,16 @@ Fas 1, 2 och Fas 3 (steg 1–6) är klara. Applikationen är fullt körbar med:
 - Batterigräns-markörer för inter-anläggningskopplingar
 - **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
 - **Felsökningsscenarier (5 st)** — pumpavbrott, ventil fastnar, kolvpump, reglerventil, överhettning
+- **Bypassledningar (T-anslutning mot rör)** — rör kan avslutas på ett befintligt rör (end-tee), möjliggör bypass-konfigurationer
+- **Koalescer** — vertikal vessel för vatten/gasolin-separation med 4 portar (tvåfas ut)
+- **Rekontakteringstank** — horisontell drum + absorptionstorn + survattenpotta med 5 portar
 - P&ID-export (SVG)
 
 ## Nästa prioriterade steg
-1. Fler guidade övningar (t.ex. bensinavsvavlingsanläggning HDS)
-2. Förbättrad P&ID-export med ISA-symboler
-3. Fler felsökningsscenarier (läckage-typer, tryckalarm)
+1. **Läromodul: Uppstart/tändning av ugn** — detaljerad ugnsmodell med steg-för-steg sekvens för tändning, kontroll av flamövervakare, purge, mm.
+2. Fler guidade övningar (t.ex. bensinavsvavlingsanläggning HDS)
+3. Förbättrad P&ID-export med ISA-symboler
+4. Fler felsökningsscenarier (läckage-typer, tryckalarm)
 
 ## Prov-Läge (Exam Mode) — Pedagogisk Nyckelfeature
 Separat läge för att examinera studenter utan ledtrådar från verktyget.

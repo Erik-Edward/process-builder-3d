@@ -482,16 +482,20 @@
                 return;
             }
 
-            // Check for pipe clicks (only if not drawing)
-            if (!pipeDrawingState) {
+            // Check for pipe clicks
+            const inSelectTarget = pipeDrawingState && pipeDrawingState.phase === 'select-target' && pipeDrawingState.fromComp;
+            if (!pipeDrawingState || inSelectTarget) {
                 const pipeMeshes = pipes.map(p => p.mesh);
                 if (pipeMeshes.length > 0) {
                     const pipeHits = raycaster.intersectObjects(pipeMeshes, false);
                     if (pipeHits.length > 0) {
                         const hitPipe = pipes.find(p => p.id === pipeHits[0].object.userData.pipeId);
                         if (hitPipe) {
-                            // If this pipe is already selected, start branching from it
-                            if (selectedPipe && selectedPipe.id === hitPipe.id) {
+                            if (inSelectTarget) {
+                                // Create T-connection: fromComp:fromPort → tee on hitPipe
+                                startPipeToTeeDrawing(pipeDrawingState.fromComp, pipeDrawingState.fromPort, hitPipe, pipeHits[0].point);
+                            } else if (selectedPipe && selectedPipe.id === hitPipe.id) {
+                                // If this pipe is already selected, start branching from it
                                 startBranchFromPipe(hitPipe, pipeHits[0].point);
                             } else {
                                 deselectComponent();
@@ -646,7 +650,7 @@
                 fromPortType: portType
             };
             document.getElementById('viewport').classList.add('mode-connect');
-            setStatus(`${comp.definition.name} › ${portName} (${portType}) — Klicka nu på en inport (blå) för att välja mål. (Esc = avbryt)`);
+            setStatus(`${comp.definition.name} › ${portName} (${portType}) — Klicka nu på en inport (blå) eller ett befintligt rör för T-anslutning. (Esc = avbryt)`);
 
         } else if (pipeDrawingState.phase === 'select-target') {
             // Phase 2: Select destination inport
@@ -1143,11 +1147,11 @@
 
     // --- Create pipe mesh from waypoints (manual routing) ---
     // Can accept explicit start/end positions and directions for branch pipes
-    function createPipeMeshFromWaypoints(fromComp, fromPort, toComp, toPort, waypoints, pipeColor, overrideStart) {
+    function createPipeMeshFromWaypoints(fromComp, fromPort, toComp, toPort, waypoints, pipeColor, overrideStart, overrideEnd) {
         const startPos = overrideStart ? overrideStart.pos.clone() : getPortWorldPosition(fromComp, fromPort);
-        const endPos = getPortWorldPosition(toComp, toPort);
+        const endPos = overrideEnd ? overrideEnd.pos.clone() : getPortWorldPosition(toComp, toPort);
         const startDir = overrideStart ? overrideStart.dir.clone() : getPortWorldDirection(fromComp, fromPort);
-        const endDir = getPortWorldDirection(toComp, toPort);
+        const endDir = overrideEnd ? (overrideEnd.dir ? overrideEnd.dir.clone() : new THREE.Vector3(0, 1, 0)) : getPortWorldDirection(toComp, toPort);
 
         const EPS = 0.01;
 
@@ -1215,7 +1219,10 @@
             compat: { ok: true, level: 'ok', reason: '' },
             computedFlow: 0,
             computedTemp: 25,
-            computedPressure: 0
+            computedPressure: 0,
+            effectiveFlow: 0,
+            effectiveTemp: 25,
+            endTeeFeeder: null
         };
         mesh.userData.pipeId = pipe.id;
         scene.add(mesh);
@@ -1580,35 +1587,43 @@
     }
 
     // --- Pipe branching (Tee) ---
-    function startBranchFromPipe(parentPipe, hitPoint) {
-        if (!parentPipe.curve) return;
 
-        // Find closest point on curve (parameter t ∈ [0,1])
+    // Helper: create a tee-ring marker mesh at a given point on a pipe
+    function createTeeMarkerMesh(teePoint, tangent) {
+        const geo = new THREE.TorusGeometry(PIPE_RADIUS * 2.5, PIPE_RADIUS * 0.8, 8, 16);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, emissive: 0x4fc3f7, emissiveIntensity: 0.3 });
+        const marker = new THREE.Mesh(geo, mat);
+        marker.position.copy(teePoint);
+        const up = new THREE.Vector3(0, 1, 0);
+        const axis = new THREE.Vector3().crossVectors(up, tangent).normalize();
+        if (axis.length() > 0.01) {
+            marker.setRotationFromAxisAngle(axis, up.angleTo(tangent));
+        }
+        return marker;
+    }
+
+    // Helper: find closest point+param on a pipe curve to a world hit point
+    function findClosestPointOnPipe(pipe, hitPoint) {
+        if (!pipe.curve) return { teePoint: hitPoint.clone(), teeParam: 0.5 };
         const steps = 100;
         let bestT = 0.5, bestDist = Infinity;
         for (let i = 0; i <= steps; i++) {
             const t = i / steps;
-            const pt = parentPipe.curve.getPoint(t);
+            const pt = pipe.curve.getPoint(t);
             const d = pt.distanceTo(hitPoint);
             if (d < bestDist) { bestDist = d; bestT = t; }
         }
+        return { teePoint: pipe.curve.getPoint(bestT), teeParam: bestT };
+    }
 
-        const teePoint = parentPipe.curve.getPoint(bestT);
+    function startBranchFromPipe(parentPipe, hitPoint) {
+        if (!parentPipe.curve) return;
+
+        const { teePoint, teeParam: bestT } = findClosestPointOnPipe(parentPipe, hitPoint);
         // Get tangent at tee point — perpendicular directions for branching
         const tangent = parentPipe.curve.getTangent(bestT).normalize();
 
-        // Create a tee marker (small ring)
-        const teeMarkerGeo = new THREE.TorusGeometry(PIPE_RADIUS * 2.5, PIPE_RADIUS * 0.8, 8, 16);
-        const teeMarkerMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, emissive: 0x4fc3f7, emissiveIntensity: 0.3 });
-        const teeMarker = new THREE.Mesh(teeMarkerGeo, teeMarkerMat);
-        teeMarker.position.copy(teePoint);
-        // Orient ring perpendicular to tangent
-        const up = new THREE.Vector3(0, 1, 0);
-        const axis = new THREE.Vector3().crossVectors(up, tangent).normalize();
-        if (axis.length() > 0.01) {
-            const angle = up.angleTo(tangent);
-            teeMarker.setRotationFromAxisAngle(axis, angle);
-        }
+        const teeMarker = createTeeMarkerMesh(teePoint, tangent);
         scene.add(teeMarker);
 
         deselectPipe();
@@ -1698,28 +1713,20 @@
             compat: { ok: true, level: 'ok', reason: '' },
             computedFlow: 0,
             computedTemp: 25,
-            computedPressure: 0
+            computedPressure: 0,
+            effectiveFlow: 0,
+            effectiveTemp: 25,
+            endTeeFeeder: null
         };
         mesh.userData.pipeId = pipe.id;
         scene.add(mesh);
         pipes.push(pipe);
 
         // Create tee marker at branch point
-        const teeGeo = new THREE.TorusGeometry(PIPE_RADIUS * 2.5, PIPE_RADIUS * 0.8, 8, 16);
-        const teeMat = new THREE.MeshStandardMaterial({
-            color: pipeColor, metalness: 0.4, roughness: 0.5
-        });
-        const teeMarkerMesh = new THREE.Mesh(teeGeo, teeMat);
-        teeMarkerMesh.position.copy(teePoint);
-        // Orient perpendicular to parent pipe
-        if (parentPipe && parentPipe.curve) {
-            const tangent = parentPipe.curve.getTangent(teeParam);
-            const up = new THREE.Vector3(0, 1, 0);
-            const axis = new THREE.Vector3().crossVectors(up, tangent).normalize();
-            if (axis.lengthSq() > 0.0001) {
-                teeMarkerMesh.setRotationFromAxisAngle(axis, up.angleTo(tangent));
-            }
-        }
+        const tangentAtTee = (parentPipe && parentPipe.curve)
+            ? parentPipe.curve.getTangent(teeParam).normalize()
+            : new THREE.Vector3(0, 1, 0);
+        const teeMarkerMesh = createTeeMarkerMesh(teePoint, tangentAtTee);
         scene.add(teeMarkerMesh);
         pipe.teeMarker = teeMarkerMesh;
 
@@ -1738,6 +1745,84 @@
         if (media !== 'unknown') {
             applyPipeCompatColor(pipe);
         }
+
+        invalidateSimGraph();
+        return pipe;
+    }
+
+    // Creates a pipe that starts at a component port and ends at a tee on another pipe.
+    // endTeeData = { pipeId, teePoint (THREE.Vector3), teeParam }
+    function createPipeWithEndTee(fromComp, fromPort, endTeeData, waypoints, mediaKey) {
+        const wp = waypoints || [];
+        const media = mediaKey || 'unknown';
+        const mediaDef = MEDIA_DEFINITIONS[media] || MEDIA_DEFINITIONS.unknown;
+        const pipeColor = media !== 'unknown' ? mediaDef.color : PIPE_COLOR;
+
+        const teePoint = endTeeData.teePoint.clone ? endTeeData.teePoint.clone()
+            : new THREE.Vector3(endTeeData.teePoint.x, endTeeData.teePoint.y, endTeeData.teePoint.z);
+
+        // Determine end direction from target pipe tangent
+        const targetPipe = pipes.find(p => p.id === endTeeData.pipeId);
+        let endDir = new THREE.Vector3(0, 1, 0);
+        if (targetPipe && targetPipe.curve) {
+            const tangent = targetPipe.curve.getTangent(endTeeData.teeParam).normalize();
+            // Branch comes in perpendicular to pipe tangent
+            endDir = Math.abs(tangent.y) > 0.8
+                ? new THREE.Vector3(1, 0, 0)
+                : new THREE.Vector3(0, 1, 0);
+        }
+
+        const overrideEnd = { pos: teePoint, dir: endDir };
+        const mesh = createPipeMeshFromWaypoints(fromComp, fromPort, null, null, wp, pipeColor, null, overrideEnd);
+
+        const pipe = {
+            id: pipeNextId++,
+            from: { componentId: fromComp.id, portName: fromPort },
+            to: { componentId: '__pipe_end', portName: 'tee' },
+            waypoints: wp.map(w => w.clone()),
+            media,
+            endTee: {
+                pipeId: endTeeData.pipeId,
+                teePoint: { x: teePoint.x, y: teePoint.y, z: teePoint.z },
+                teeParam: endTeeData.teeParam
+            },
+            mesh,
+            curve: mesh.userData.curve,
+            particles: [],
+            label: null,
+            teeMarker: null,
+            compat: { ok: true, level: 'ok', reason: '' },
+            computedFlow: 0,
+            computedTemp: 25,
+            computedPressure: 0,
+            effectiveFlow: 0,
+            effectiveTemp: 25,
+            endTeeFeeder: null
+        };
+        mesh.userData.pipeId = pipe.id;
+        scene.add(mesh);
+        pipes.push(pipe);
+
+        // Create tee marker at end point on target pipe
+        if (targetPipe && targetPipe.curve) {
+            const tangent = targetPipe.curve.getTangent(endTeeData.teeParam).normalize();
+            const marker = createTeeMarkerMesh(teePoint, tangent);
+            scene.add(marker);
+            pipe.teeMarker = marker;
+        }
+
+        // Media label
+        if (media !== 'unknown') createPipeLabel(pipe);
+
+        // Register connection on from component
+        fromComp.connections.push({ portName: fromPort, pipeId: pipe.id });
+        updatePortMarkerColor(fromComp, fromPort);
+
+        // Flow particles
+        createFlowParticles(pipe);
+
+        // Compat check
+        if (media !== 'unknown') applyPipeCompatColor(pipe);
 
         invalidateSimGraph();
         return pipe;
@@ -1775,6 +1860,15 @@
     }
 
     function removePipe(pipeId) {
+        // Cascade: remove branch pipes that branch from this pipe (their teeMarkers would be orphaned)
+        const branchChildIds = pipes.filter(p => p.branchFrom && p.branchFrom.pipeId === pipeId).map(p => p.id);
+        for (const childId of branchChildIds) removePipe(childId);
+
+        // Cascade: remove end-tee pipes that terminate on this pipe
+        const endTeeChildIds = pipes.filter(p => p.endTee && p.endTee.pipeId === pipeId).map(p => p.id);
+        for (const childId of endTeeChildIds) removePipe(childId);
+
+        // Re-find index since cascade removals above shift the array
         const idx = pipes.findIndex(p => p.id === pipeId);
         if (idx < 0) return;
         const pipe = pipes[idx];
@@ -2232,15 +2326,66 @@
         if (!pipeDrawingState || pipeDrawingState.phase !== 'drawing') return;
         const h = pipeDrawingState.currentHeight.toFixed(1);
         const n = pipeDrawingState.waypoints.length;
-        const from = pipeDrawingState.isBranch ? 'Förgrening' : pipeDrawingState.fromComp.definition.name;
-        const to = pipeDrawingState.toComp.definition.name;
+        const from = pipeDrawingState.isBranch ? 'Förgrening'
+            : (pipeDrawingState.fromComp ? pipeDrawingState.fromComp.definition.name : '?');
+        const to = pipeDrawingState.endTeeData ? 'rörledning (T-anslutning)'
+            : (pipeDrawingState.toComp ? pipeDrawingState.toComp.definition.name : '?');
         setStatus(`${from} → ${to} [${n} pt, höjd: ${h}] — Klicka = waypoint | Enter = slutför | Q/E höjd | Dra = kamera | Högerklick = ångra | Esc = avbryt`);
+    }
+
+    // Start drawing a pipe from a component port to a tee on an existing pipe
+    function startPipeToTeeDrawing(fromComp, fromPort, targetPipe, hitPoint) {
+        if (!targetPipe.curve) return;
+
+        const { teePoint, teeParam } = findClosestPointOnPipe(targetPipe, hitPoint);
+        const tangent = targetPipe.curve.getTangent(teeParam).normalize();
+
+        // Temporary tee marker to show the connection point
+        const teeMarker = createTeeMarkerMesh(teePoint, tangent);
+        scene.add(teeMarker);
+
+        const startPos = getPortWorldPosition(fromComp, fromPort);
+        const stubEnd = startPos.clone().add(getPortWorldDirection(fromComp, fromPort).multiplyScalar(STUB_LEN));
+
+        const previewMat = new THREE.LineDashedMaterial({
+            color: 0x4fc3f7, dashSize: 0.2, gapSize: 0.1,
+            transparent: true, opacity: 0.6
+        });
+        const previewGeo = new THREE.BufferGeometry().setFromPoints([stubEnd.clone(), stubEnd.clone()]);
+        const previewLine = new THREE.Line(previewGeo, previewMat);
+        previewLine.computeLineDistances();
+        scene.add(previewLine);
+
+        const heightIndicator = createHeightIndicator();
+        const pipeAlignGuides = createPipeAlignGuides();
+
+        pipeDrawingState = {
+            phase: 'drawing',
+            fromComp,
+            fromPort,
+            fromPortType: fromComp.definition.ports[fromPort].type,
+            toComp: null,
+            toPort: null,
+            endTeeData: { pipeId: targetPipe.id, teePoint, teeParam },
+            waypoints: [],
+            previewLine,
+            waypointMarkers: [],
+            currentHeight: startPos.y,
+            heightIndicator,
+            pipeAlignGuides,
+            hoveredPort: null,
+            teeMarker
+        };
+
+        document.getElementById('viewport').classList.add('mode-connect');
+        resetPortHighlights();
+        pipeDrawingStatusMsg();
     }
 
     function finishPipeDrawing() {
         if (!pipeDrawingState || pipeDrawingState.phase !== 'drawing') return;
         const { fromComp, fromPort, toComp, toPort, waypoints, isBranch,
-                branchFromPipeId, branchTeePoint, branchTeeParam } = pipeDrawingState;
+                branchFromPipeId, branchTeePoint, branchTeeParam, endTeeData } = pipeDrawingState;
         const wpClone = waypoints.map(w => w.clone());
 
         cleanupPipeDrawing();
@@ -2250,24 +2395,29 @@
             pushUndo();
             const mediaDef = MEDIA_DEFINITIONS[mediaKey] || MEDIA_DEFINITIONS.unknown;
             let newPipe;
-            if (isBranch) {
+            if (endTeeData) {
+                newPipe = createPipeWithEndTee(fromComp, fromPort, endTeeData, wpClone, mediaKey);
+                setStatus(`✓ T-anslutning: ${fromComp.definition.name}:${fromPort} → rörledning (${mediaDef.name})`);
+            } else if (isBranch) {
                 newPipe = createBranchPipe(branchFromPipeId, branchTeePoint, branchTeeParam, toComp, toPort, wpClone, mediaKey);
             } else {
                 newPipe = createPipe(fromComp, fromPort, toComp, toPort, wpClone, mediaKey);
             }
-            // Show compatibility result in status bar
-            if (newPipe && newPipe.compat && !newPipe.compat.ok) {
+            // Show compatibility result in status bar (for non-endTee pipes)
+            if (!endTeeData && newPipe && newPipe.compat && !newPipe.compat.ok) {
                 const prefix = newPipe.compat.level === 'error' ? '✕ Inkompatibel:' : '⚠ Varning:';
                 setStatus(`${prefix} ${newPipe.compat.reason}`);
-            } else if (isBranch) {
+            } else if (!endTeeData && isBranch) {
                 setStatus(`Förgrening → ${toComp.definition.name}:${toPort} (${mediaDef.name})`);
-            } else {
+            } else if (!endTeeData) {
                 setStatus(`✓ Kopplat ${fromComp.definition.name}:${fromPort} → ${toComp.definition.name}:${toPort} (${mediaDef.name})`);
             }
         }
 
-        // If either port has a default media, skip the modal
-        const autoMedia = resolvePortDefaultMedia(fromComp, fromPort, toComp, toPort);
+        // If from port has a default media (toComp may be null for endTee), skip the modal
+        const autoMedia = endTeeData
+            ? resolvePortDefaultMedia(fromComp, fromPort, null, null)
+            : resolvePortDefaultMedia(fromComp, fromPort, toComp, toPort);
         if (autoMedia) {
             finalizePipe(autoMedia);
         } else {
@@ -2472,17 +2622,35 @@
         }
     }
 
+    // Returns { flowing: bool, startT: number, feedPipe: pipe|null }
+    // startT > 0 means partial flow starting at the tee junction (downstream segment only).
+    // feedPipe is the end-tee pipe feeding into this pipe, when applicable.
+    // Uses computedFlow > 0 (not comp.running) so valve opening=0 shows correctly.
+    function getPipeFlowState(pipe) {
+        if (!simulationRunning) return { flowing: false, startT: 0, feedPipe: null };
+
+        // Use pre-computed effective flow (set by simTick resolution phase)
+        const eFlow = pipe.effectiveFlow ?? 0;
+        if (eFlow <= 0) return { flowing: false, startT: 0, feedPipe: null };
+
+        // Has flow — determine startT (partial flow from tee point) and feedPipe
+        const feeder = pipe.endTeeFeeder || null;
+        if (feeder) {
+            // This pipe receives bypass flow starting at the tee junction
+            return { flowing: true, startT: feeder.endTee.teeParam, feedPipe: feeder };
+        }
+        return { flowing: true, startT: 0, feedPipe: null };
+    }
+
     function isPipeFlowing(pipe) {
-        const fromComp = placedComponents.find(c => c.id === pipe.from.componentId);
-        const toComp = placedComponents.find(c => c.id === pipe.to.componentId);
-        return simulationRunning && fromComp && toComp && fromComp.running && toComp.running;
+        return getPipeFlowState(pipe).flowing;
     }
 
     function updatePipeParticleVisibility() {
         for (const pipe of pipes) {
-            const flowing = isPipeFlowing(pipe);
+            const { flowing, startT } = getPipeFlowState(pipe);
             for (const p of pipe.particles) {
-                p.visible = flowing;
+                p.visible = flowing && p.userData.flowT >= startT;
             }
         }
     }
@@ -2897,15 +3065,18 @@
             const p = pipes[i];
             // Branch pipes have no real "from" component – skip in adjOut
             if (p.from.componentId !== '__branch') {
-                adjOut.get(p.from.componentId).push({
+                adjOut.get(p.from.componentId)?.push({
                     pipeIdx: i, toId: p.to.componentId,
                     fromPort: p.from.portName, toPort: p.to.portName
                 });
             }
-            adjIn.get(p.to.componentId).push({
-                pipeIdx: i, fromId: p.from.componentId,
-                fromPort: p.from.portName, toPort: p.to.portName
-            });
+            // End-tee pipes have no real "to" component – skip in adjIn
+            if (p.to.componentId !== '__pipe_end') {
+                adjIn.get(p.to.componentId)?.push({
+                    pipeIdx: i, fromId: p.from.componentId,
+                    fromPort: p.from.portName, toPort: p.to.portName
+                });
+            }
         }
 
         // Kahn's algorithm for topological sort
@@ -2914,6 +3085,8 @@
         for (const p of pipes) {
             // Branch pipes don't represent a real upstream component – skip
             if (p.from.componentId === '__branch') continue;
+            // End-tee pipes don't connect to a real downstream component – skip
+            if (p.to.componentId === '__pipe_end') continue;
             inDegree.set(p.to.componentId, (inDegree.get(p.to.componentId) || 0) + 1);
         }
 
@@ -2956,6 +3129,9 @@
             pipe.computedFlow = 0;
             pipe.computedTemp = 25;
             pipe.computedPressure = 0;
+            pipe.effectiveFlow = 0;
+            pipe.effectiveTemp = 25;
+            pipe.endTeeFeeder = null;
         }
     }
 
@@ -3184,6 +3360,46 @@
             }
         }
 
+        // Resolve effective flow/temp for all pipes (Phase 3: handles end-tee feeders)
+        // Pass 1: set from computedFlow for regular pipes and end-tee pipes
+        for (const pipe of pipes) {
+            pipe.endTeeFeeder = null;
+            if (pipe.from.componentId === '__branch' && pipe.branchFrom) {
+                // Branch pipes: will be resolved in pass 2 after parents are set
+                pipe.effectiveFlow = 0;
+                pipe.effectiveTemp = 25;
+            } else if (pipe.computedFlow > 0) {
+                pipe.effectiveFlow = pipe.computedFlow;
+                pipe.effectiveTemp = pipe.computedTemp;
+            } else if (pipe.to.componentId !== '__pipe_end') {
+                // Look for an end-tee pipe feeding into this pipe
+                const feeder = pipes.find(p => p.endTee && p.endTee.pipeId === pipe.id && p.computedFlow > 0);
+                if (feeder) {
+                    pipe.effectiveFlow = feeder.computedFlow;
+                    pipe.effectiveTemp = feeder.computedTemp;
+                    pipe.endTeeFeeder = feeder;
+                } else {
+                    pipe.effectiveFlow = 0;
+                    pipe.effectiveTemp = pipe.computedTemp;
+                }
+            } else {
+                // end-tee pipe itself
+                pipe.effectiveFlow = pipe.computedFlow;
+                pipe.effectiveTemp = pipe.computedTemp;
+            }
+        }
+        // Pass 2: resolve branch pipes from parent effectiveFlow
+        for (const pipe of pipes) {
+            if (pipe.from.componentId === '__branch' && pipe.branchFrom) {
+                const parentPipe = pipes.find(pp => pp.id === pipe.branchFrom.pipeId);
+                if (parentPipe) {
+                    pipe.effectiveFlow = parentPipe.effectiveFlow;
+                    pipe.effectiveTemp = parentPipe.effectiveTemp;
+                    pipe.endTeeFeeder = parentPipe.endTeeFeeder;
+                }
+            }
+        }
+
         // Update pipe particle colors and mesh colors from computed temperatures
         updatePipeColorsFromComputed();
 
@@ -3216,18 +3432,20 @@
 
     function updatePipeColorsFromComputed() {
         for (const pipe of pipes) {
-            const color = temperatureToColor(pipe.computedTemp);
-            pipe.flowTemp = pipe.computedTemp;
+            // Use pre-computed effective values (set by simTick resolution phase)
+            const eFlow = pipe.effectiveFlow ?? 0;
+            const eTemp = pipe.effectiveTemp ?? pipe.computedTemp ?? 25;
+            const color = temperatureToColor(eTemp);
+            pipe.flowTemp = eTemp;
             for (const p of pipe.particles) {
                 p.material.color.copy(color);
                 p.material.emissive.copy(color);
             }
             // Color the pipe mesh by temperature when it is carrying flow
             if (pipe.mesh && pipe.mesh.material) {
-                const flowing = isPipeFlowing(pipe) && pipe.computedFlow > 0;
-                if (flowing) {
+                if (eFlow > 0) {
                     pipe.mesh.material.color.copy(color);
-                    const intensity = Math.min(0.4, Math.max(0, (pipe.computedTemp - 25) / 150));
+                    const intensity = Math.min(0.4, Math.max(0, (eTemp - 25) / 150));
                     pipe.mesh.material.emissive.copy(color);
                     pipe.mesh.material.emissiveIntensity = intensity;
                 } else {
@@ -3388,6 +3606,7 @@
                 tagNumber: c.tagNumber || ''
             })),
             pipes: pipes.map(p => ({
+                id: p.id,
                 from: { componentId: p.from.componentId, portName: p.from.portName },
                 to: { componentId: p.to.componentId, portName: p.to.portName },
                 waypoints: (p.waypoints || []).map(w => ({ x: w.x, y: w.y, z: w.z })),
@@ -3396,6 +3615,11 @@
                     pipeId: p.branchFrom.pipeId,
                     teePoint: p.branchFrom.teePoint,
                     teeParam: p.branchFrom.teeParam
+                } : null,
+                endTee: p.endTee ? {
+                    pipeId: p.endTee.pipeId,
+                    teePoint: p.endTee.teePoint,
+                    teeParam: p.endTee.teeParam
                 } : null
             })),
             nextId: nextId,
@@ -3469,14 +3693,16 @@
         }
         restoringSnapshot = false;
 
-        // Restore pipes (normal first, then branches — branches depend on parent pipes existing)
-        const normalPipes = snap.pipes.filter(p => !p.branchFrom);
+        // Restore pipes (normal first, then branches, then end-tees — tee pipes depend on parent pipes existing)
+        const normalPipes = snap.pipes.filter(p => !p.branchFrom && !p.endTee);
         const branchPipes = snap.pipes.filter(p => p.branchFrom);
+        const endTeePipes = snap.pipes.filter(p => p.endTee);
 
         for (const pipeItem of normalPipes) {
             const fromComp = placedComponents.find(c => c.id === pipeItem.from.componentId);
             const toComp = placedComponents.find(c => c.id === pipeItem.to.componentId);
             if (fromComp && toComp) {
+                if (pipeItem.id !== undefined) pipeNextId = pipeItem.id; // force original ID
                 const wp = (pipeItem.waypoints || []).map(w => new THREE.Vector3(w.x, w.y, w.z));
                 createPipe(fromComp, pipeItem.from.portName, toComp, pipeItem.to.portName, wp, pipeItem.media || 'unknown');
             }
@@ -3484,11 +3710,26 @@
         for (const pipeItem of branchPipes) {
             const toComp = placedComponents.find(c => c.id === pipeItem.to.componentId);
             if (toComp && pipeItem.branchFrom) {
+                if (pipeItem.id !== undefined) pipeNextId = pipeItem.id; // force original ID
                 const tp = pipeItem.branchFrom.teePoint;
                 const teePoint = new THREE.Vector3(tp.x, tp.y, tp.z);
                 const wp = (pipeItem.waypoints || []).map(w => new THREE.Vector3(w.x, w.y, w.z));
                 createBranchPipe(pipeItem.branchFrom.pipeId, teePoint, pipeItem.branchFrom.teeParam,
                     toComp, pipeItem.to.portName, wp, pipeItem.media || 'unknown');
+            }
+        }
+        for (const pipeItem of endTeePipes) {
+            const fromComp = placedComponents.find(c => c.id === pipeItem.from.componentId);
+            if (fromComp && pipeItem.endTee) {
+                if (pipeItem.id !== undefined) pipeNextId = pipeItem.id; // force original ID
+                const tp = pipeItem.endTee.teePoint;
+                const teePoint = new THREE.Vector3(tp.x, tp.y, tp.z);
+                const wp = (pipeItem.waypoints || []).map(w => new THREE.Vector3(w.x, w.y, w.z));
+                createPipeWithEndTee(fromComp, pipeItem.from.portName, {
+                    pipeId: pipeItem.endTee.pipeId,
+                    teePoint,
+                    teeParam: pipeItem.endTee.teeParam
+                }, wp, pipeItem.media || 'unknown');
             }
         }
 
@@ -3651,6 +3892,7 @@
             tagNumber: c.tagNumber || ''
         }));
         const pipeData = pipes.map(p => ({
+            id: p.id,
             from: { componentId: p.from.componentId, portName: p.from.portName },
             to: { componentId: p.to.componentId, portName: p.to.portName },
             waypoints: (p.waypoints || []).map(w => ({ x: w.x, y: w.y, z: w.z })),
@@ -3659,6 +3901,11 @@
                 pipeId: p.branchFrom.pipeId,
                 teePoint: p.branchFrom.teePoint,
                 teeParam: p.branchFrom.teeParam
+            } : null,
+            endTee: p.endTee ? {
+                pipeId: p.endTee.pipeId,
+                teePoint: p.endTee.teePoint,
+                teeParam: p.endTee.teeParam
             } : null
         }));
         return { components: compData, pipes: pipeData };
@@ -3715,11 +3962,13 @@
             }
         }
 
-        // Recreate pipes (normal first, branches after)
-        for (const pipeItem of pipeItems.filter(p => !p.branchFrom)) {
+        // Recreate pipes (normal first, branches, then end-tees — tee types depend on parent pipes existing)
+        // Force each pipe to its saved ID so that branchFrom.pipeId / endTee.pipeId references stay valid.
+        for (const pipeItem of pipeItems.filter(p => !p.branchFrom && !p.endTee)) {
             const fromComp = placedComponents.find(c => c.id === (idMap[pipeItem.from.componentId] || pipeItem.from.componentId));
             const toComp   = placedComponents.find(c => c.id === (idMap[pipeItem.to.componentId]   || pipeItem.to.componentId));
             if (fromComp && toComp) {
+                if (pipeItem.id !== undefined) pipeNextId = pipeItem.id; // force original pipe ID
                 const wp = (pipeItem.waypoints || []).map(w => new THREE.Vector3(w.x, w.y, w.z));
                 createPipe(fromComp, pipeItem.from.portName, toComp, pipeItem.to.portName, wp, pipeItem.media || 'unknown');
             }
@@ -3727,11 +3976,26 @@
         for (const pipeItem of pipeItems.filter(p => p.branchFrom)) {
             const toComp = placedComponents.find(c => c.id === (idMap[pipeItem.to.componentId] || pipeItem.to.componentId));
             if (toComp && pipeItem.branchFrom) {
+                if (pipeItem.id !== undefined) pipeNextId = pipeItem.id; // force original pipe ID
                 const tp = pipeItem.branchFrom.teePoint;
                 const teePoint = new THREE.Vector3(tp.x, tp.y, tp.z);
                 const wp = (pipeItem.waypoints || []).map(w => new THREE.Vector3(w.x, w.y, w.z));
                 createBranchPipe(pipeItem.branchFrom.pipeId, teePoint, pipeItem.branchFrom.teeParam,
                     toComp, pipeItem.to.portName, wp, pipeItem.media || 'unknown');
+            }
+        }
+        for (const pipeItem of pipeItems.filter(p => p.endTee)) {
+            const fromComp = placedComponents.find(c => c.id === (idMap[pipeItem.from.componentId] || pipeItem.from.componentId));
+            if (fromComp && pipeItem.endTee) {
+                if (pipeItem.id !== undefined) pipeNextId = pipeItem.id; // force original pipe ID
+                const tp = pipeItem.endTee.teePoint;
+                const teePoint = new THREE.Vector3(tp.x, tp.y, tp.z);
+                const wp = (pipeItem.waypoints || []).map(w => new THREE.Vector3(w.x, w.y, w.z));
+                createPipeWithEndTee(fromComp, pipeItem.from.portName, {
+                    pipeId: pipeItem.endTee.pipeId,
+                    teePoint,
+                    teeParam: pipeItem.endTee.teeParam
+                }, wp, pipeItem.media || 'unknown');
             }
         }
 
@@ -4475,7 +4739,7 @@
 
         setTimeout(() => {
             advanceSequenceStep();
-        }, 800);
+        }, 2000);
     }
 
     function advanceSequenceStep() {
@@ -4759,14 +5023,20 @@
         // Animate flow particles when simulation is running
         if (simulationRunning) {
             for (const pipe of pipes) {
-                if (!isPipeFlowing(pipe)) continue;
-                const speedMultiplier = Math.max(0.05, Math.min(3.0, pipe.computedFlow / 100));
+                const { flowing, startT } = getPipeFlowState(pipe);
+                if (!flowing) continue;
+                // Use pre-computed effective flow for particle speed
+                const eFlow = pipe.effectiveFlow ?? 0;
+                const speedMultiplier = Math.max(0.05, Math.min(3.0, eFlow / 100));
                 const speed = FLOW_SPEED * speedMultiplier;
                 for (const p of pipe.particles) {
                     let t = p.userData.flowT + speed * delta;
-                    if (t > 1) t -= 1;
+                    // Wrap back to startT (not 0) so particles stay in the flowing zone
+                    if (t > 1) t = startT + (t - 1);
+                    if (t < startT) t = startT;
                     p.userData.flowT = t;
-                    const pos = pipe.curve.getPointAt(t);
+                    p.visible = t >= startT;
+                    const pos = pipe.curve.getPointAt(Math.min(t, 0.9999));
                     p.position.copy(pos);
                 }
             }

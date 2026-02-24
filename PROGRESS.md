@@ -30,7 +30,7 @@ process-builder-3d/
 │   ├── main.js                # Appens motor: Three.js-scen, kamera,
 │   │                          # placering, kopplingar, media-modal,
 │   │                          # defaultMedia-logik, simulering, sekvenser
-│   ├── components.js          # 55 komponentdefinitioner med 3D-geometri
+│   ├── components.js          # 57 komponentdefinitioner med 3D-geometri
 │   │                          # och defaultMedia på relevanta portar
 │   ├── componentLibrary.js    # Vänster panel: flikar (13 kategorier), sökning, kort
 │   ├── media.js               # 31 mediatyper med färg, fas, faroklass
@@ -79,7 +79,7 @@ process-builder-3d/
 
 ---
 
-## Komponentbibliotek (55 komponenter)
+## Komponentbibliotek (57 komponenter)
 
 ### Pumpar (5 st)
 | Nyckel | Namn |
@@ -111,7 +111,7 @@ process-builder-3d/
 |--------|------|
 | `reactor` | Reaktor |
 
-### Separering (7 st)
+### Separering (9 st)
 | Nyckel | Namn |
 |--------|------|
 | `three_phase_separator` | Trefasseparator |
@@ -121,6 +121,8 @@ process-builder-3d/
 | `h2s_scrubber` | H₂S-skrubber (kaustisk tvätt) |
 | `desalter` | Desalter (elektrostatisk råoljedesalter) |
 | `mol_sieve_dryer` | Molekylsikt-tork (zeolitbädd) |
+| `coalescer` | Koalescer (vertikal, vatten-/gasolin-sep.) |
+| `recontacting_absorber_drum` | Rekontakteringstank (horisontell + torn + boot) |
 
 ### Tankar (4 st)
 | Nyckel | Namn |
@@ -253,6 +255,12 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 | `water_in` – desalter | Processvatten |
 | `brine_out` – desalter | Survatten |
 | `regen_in/out` – molekylsikt-tork | Kvävgas |
+| `feed_in`, `product_out` – koalescer | Krackad bensin resp. Tvåfas (gas+vätska) |
+| `relief_out` – koalescer | Fackelgas |
+| `water_out` – koalescer | Survatten |
+| `gas_in`, `gas_out` – rekontakteringstank | Tvåfas (gas+vätska) resp. Recirkulationsgas |
+| `naphtha_in`, `naphtha_out` – rekontakteringstank | Råbensin |
+| `water_out` – rekontakteringstank | Survatten |
 
 ---
 
@@ -365,6 +373,38 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **`valve_stuck` buggfix:** `__updateParam` sätter nu `comp.running = true` när `valve_stuck`-felet rensas och öppningsvärdet > 0 — verify_flow passerar nu korrekt
 - **`reset_emergency` fault-rensning:** Dubbelt skydd — `showSequenceStepSuccess` + `advanceSequenceStep` anropar `clearAllFaults()` efter reset_emergency i fault-scenarion
 
+### Session 11 – Bypass-buggfix + 2 nya komponenter (Koalescer & Rekontakteringstank)
+
+#### Bypass-fix (end-tee): Huvudrör visade medialfärg istf. simuleringsfärg
+- **Rotsak:** `getPipeFlowState` beräknade `effectiveFlow` on-the-fly — resulterade i race condition
+  för bypass-röret (P2, CV→tank) som fortfarande fick medialfärg (grön) när bypass var aktiv
+- **Fix:** Lade till Phase 3-resolution i `simTick` — pre-beräknar `pipe.effectiveFlow`,
+  `pipe.effectiveTemp` och `pipe.endTeeFeeder` explicit på alla rör innan färguppdatering
+- `getPipeFlowState` förenklades till att läsa pre-beräknade värden; `updatePipeColorsFromComputed`
+  läser `pipe.effectiveFlow` direkt — ingen on-the-fly logik kvar
+
+#### Ny komponent – `coalescer` (Separering)
+- Vertikal cylinderformad vessel för separation av vatten från gasolin/nafta
+- Geometri: CylinderGeometry + SphereGeometry-halvkupar (topp + botten) + 3 stödben
+- Röd RV-kropp på säkerhetsventil-nozzeln
+- 4 portar: `feed_in` (krackad bensin, sida nära topp), `product_out` (tvåfas, topp),
+  `relief_out` (fackelgas, övre sida), `water_out` (survatten, botten — Z-riktning mot grid)
+- `water_out` ritning: exitriktning `[0,0,1]` (Z) istf. `[0,-1,0]` (ner) — undviker under-grid-ledning
+
+#### Ny komponent – `recontacting_absorber_drum` (Separering)
+- Horisontell liggande tank + vertikal absorptionstorn (lila, wireframe-fyllning) + survattenpotta
+- Geometri: Horisontell CylinderGeometry med saddelstöd + upprättstående torn + liten vertikal boot
+- 5 portar: `gas_in` (tvåfas från koalescer, drumtopp), `naphtha_in` (råbensin, tornsida nära topp),
+  `gas_out` (recirkulationsgas, torntopp), `naphtha_out` (råbensin, drumundersida),
+  `water_out` (survatten, bootbotten)
+
+#### Buggfixar nya komponenter
+- `gas_in.defaultMedia` ändrad `recycle_gas` → `raw_gasoline` → slutligen `two_phase_hc` (stegvis
+  under testning — matchat koalescerns `product_out`)
+- `coalescer.product_out.defaultMedia` ändrad `raw_gasoline` → `two_phase_hc` för att matcha
+
+---
+
 ### Session 8 – Portfixar, Ny Tooltip, Ny Komponent och Batterigräns
 - **Dolda portar fixade (6 Separering-komponenter):** Portpositioner justerade utanför mesh-geometri för `three_phase_separator`, `drum`, `knockout_drum`, `desalter`, `h2s_scrubber`, `mol_sieve_dryer`
 - **H₂S-skrubber `spent_out`:** Ändrad från nedåt-riktad underjordisk port (`[0,-1.05,0]`) till sidodränering på sumpen (`[-0.28,-0.94,0]`, riktning vänster). Munstycksmesh uppdaterad.
@@ -424,6 +464,18 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - Inaktiverar: automatiskt mediaval, compat-feedback (röda rör), auto-koppling, komponentetiketter
 - Röd banner i 3D-vyn när aktivt; knapp röd-markerad
 - Examinatorvy: stäng av Prov-Läge → alla compat-fel syns direkt
+
+#### Steg 8 – Bypassledningar (T-anslutning mot rör) ✅ KLART
+- **End-tee-rör:** Nytt rörtyp (`to.componentId === '__pipe_end'`) – startar från en komponentport och avslutas på ett befintligt rör (T-anslutning)
+- **Användningsflöde:** Klicka utport → klicka på ett befintligt rör → lägg till waypoints → Enter för att slutföra
+- **Statusmeddelande** uppdaterat: informerar om att man kan klicka på inport ELLER rör
+- **`createPipeWithEndTee()`:** Skapar T-anslutningsrör med tee-markör (cyan torus) på målröret
+- **`startPipeToTeeDrawing()`:** Övergångsfunktion från select-target till drawing-fas med end-tee
+- **`buildSimGraph`:** Hoppar över `__pipe_end` i adjIn och inDegree (identisk guard-logik som `__branch`)
+- **`isPipeFlowing`:** End-tee-rör flödar om `simulationRunning && fromComp.running` (ingen toComp)
+- **Serialisering:** `captureSnapshot`, `restoreSnapshot`, `serializeCanvas`, `restoreCanvas` inkluderar `endTee`-fält och återställer end-tee-rör efter normala och branch-rör
+- **Rensning:** `removePipe` hanterar end-tee-rör korrekt (reell fromComp, ingen toComp); tee-markör rensas via befintlig `teeMarker`-städning
+- **Steg-tidsinställning:** Sekvens-stegövergång ändrad 800 ms → 2000 ms (mer tid att läsa)
 
 #### Steg 7 – Felsökningsscenarier ✅ KLART
 - **5 felsökningsscenarier** i `sequences.js` (`FAULT_SCENARIOS`):
