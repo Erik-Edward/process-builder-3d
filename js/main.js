@@ -146,6 +146,13 @@
     // --- Steg 6: Prov-Läge (Exam Mode) ---
     let examMode = false;
 
+    // --- Ugnsmodul (Furnace scenario) state ---
+    let scenarioLocked = false;       // Förhindrar flytt/radering av komponenter under scenario
+    let furnaceSavedCanvas = null;    // Sparar canvas före scenario-preload
+    let furnaceTimerStart = null;     // Tidsstämpel (Date.now()) vid start av furnace_timer-steg
+    let furnaceTimerDuration = 0;     // Sekunder för aktuell timer
+    let furnaceTimerInterval = null;  // setInterval-id för countdown-display
+
     // --- Fas 4: Sequence state ---
     let activeSequence = null;
     let sequenceStepIndex = 0;
@@ -462,6 +469,20 @@
         }
 
         const selectedType = ComponentLibrary.getSelected();
+
+        // --- Check for furnace interactive element clicks (BEFORE port-click logic) ---
+        if (!selectedType && !pipeDrawingState) {
+            for (const comp of placedComponents) {
+                if (comp.type !== 'furnace_training' && comp.type !== 'v_xxx4_drum') continue;
+                const hits = raycaster.intersectObject(comp.mesh, true);
+                for (const hit of hits) {
+                    if (hit.object.userData.furnaceKey) {
+                        handleFurnaceElementClick(comp, hit.object.userData.furnaceKey);
+                        return;
+                    }
+                }
+            }
+        }
 
         // --- Check for port marker clicks (highest priority when no library selection) ---
         if (!selectedType) {
@@ -2713,6 +2734,10 @@
 
     // --- Place component ---
     function placeComponent(type, x, z, rotation, customY) {
+        if (scenarioLocked && !restoringSnapshot) {
+            setStatus('Scenarieläge — komponentmanipulation är inaktiverad');
+            return;
+        }
         rotation = rotation || 0;
         const def = COMPONENT_DEFINITIONS[type];
         if (!def) return;
@@ -2732,10 +2757,18 @@
         mesh.rotation.y = THREE.MathUtils.degToRad(rotation);
         mesh.userData.componentId = nextId;
         mesh.castShadow = true;
+        // Mark all interactive furnace sub-elements with the component's id
+        mesh.traverse(child => {
+            if (child.userData.furnaceKey) child.userData.componentId = nextId;
+        });
 
         scene.add(mesh);
         const comp = { id: nextId, type, mesh, definition: def, rotation, connections: [], running: false, computed: {}, tagNumber: '', tagSprite: null };
         if (customY !== undefined && customY !== null) comp.customY = customY;
+        // Initialize furnaceState from definition if present
+        if (def.initialFurnaceState) {
+            comp.furnaceState = JSON.parse(JSON.stringify(def.initialFurnaceState));
+        }
         // Deep clone per-instance parameters
         comp.parameters = {};
         for (const [key, param] of Object.entries(def.parameters)) {
@@ -2800,8 +2833,165 @@
         ComponentLibrary.clearSelection();
     }
 
+    // =========================================================
+    // --- Ugnsmodul: Interaktiva element ---
+    // =========================================================
+
+    /** Hanterar klick på ett interaktivt ugns-element */
+    function handleFurnaceElementClick(comp, key) {
+        // ── HATCH toggle är alltid tillåtet, oavsett aktivt sekvenssteg ──────────
+        if (key.startsWith('HATCH_')) {
+            const hSec = key.split('_')[1];   // 'A', 'B' or 'C'
+            comp.furnaceState[key] = comp.furnaceState[key] === 'open' ? 'closed' : 'open';
+            updateFurnaceElementVisual(comp, key);
+            if (comp.furnaceState[key] === 'open') {
+                const anyBurner = [1,2,3,4,5,6].some(n => comp.furnaceState[`BURNER_${hSec}${n}`]);
+                const pilotLit  = comp.furnaceState[`PILOT_${hSec}`] === 'lit';
+                if (anyBurner)      setStatus(`Lucka ${hSec} öppen — 🔥 Brännare TÄNDA`);
+                else if (pilotLit)  setStatus(`Lucka ${hSec} öppen — Pilotrör tänt, inga brännare`);
+                else                setStatus(`Lucka ${hSec} öppen — Inga brännare tända`);
+            } else {
+                setStatus(`Lucka ${hSec} stängd`);
+            }
+            return;
+        }
+
+        if (!activeSequence) {
+            // Ingen aktiv sekvens – visa bara info
+            const state = comp.furnaceState ? comp.furnaceState[key] : '?';
+            setStatus(`${key}: ${state !== undefined ? state : '(okänt läge)'}`);
+            return;
+        }
+
+        const step = activeSequence.steps[sequenceStepIndex];
+        if (!step) return;
+        const action = step.action;
+
+        if (action.type === 'furnace_interact') {
+            // Rätt komponent och rätt element?
+            if (comp.type !== action.componentType) {
+                setStatus(`✕ Fel komponent — klicka på ${action.componentType === 'furnace_training' ? 'ugnen' : 'V-XXX4'}`);
+                return;
+            }
+            if (action.key !== key) {
+                setStatus(`✕ Fel element — klicka på ${action.key}`);
+                return;
+            }
+            // Utför interaktionen
+            comp.furnaceState[key] = action.targetState;
+            updateFurnaceElementVisual(comp, key);
+            setStatus(`✓ ${key} → ${action.targetState}`);
+
+            // Auto-tänd brännare när KIKV öppnas och pilot redan brinner
+            if (key.startsWith('KIKV_') && action.targetState === 'open') {
+                const m = key.match(/KIKV_([ABC])(\d+)/);
+                if (m) {
+                    const [, kSec, kNum] = m;
+                    if (comp.furnaceState[`PILOT_${kSec}`] === 'lit') {
+                        comp.furnaceState[`BURNER_${kSec}${kNum}`] = true;
+                        updateFurnaceElementVisual(comp, `BURNER_${kSec}${kNum}`);
+                    }
+                }
+            }
+            // Valideringen i poll-loopen plockar upp detta inom 500 ms
+
+        } else if (action.type === 'furnace_verify') {
+            // Rätt komponent?
+            if (comp.type !== action.componentType) {
+                setStatus(`✕ Fel komponent — klicka på ${action.componentType === 'furnace_training' ? 'ugnen' : 'V-XXX4'}`);
+                return;
+            }
+            // Rätt element? (action.key ska matcha clicked key)
+            if (action.key !== key) {
+                setStatus(`✕ Fel element — klicka på ${action.key}`);
+                return;
+            }
+            const currentState = comp.furnaceState[key];
+            if (currentState === action.expectedState || currentState === false && action.expectedState === false) {
+                // Sätt verified-flagga för att validering ska passa
+                comp.furnaceState[key + '_verified'] = true;
+                setStatus(`✓ Kontrollerat: ${key} = ${currentState}`);
+            } else {
+                setStatus(`✕ Fel läge: ${key} är "${currentState}", ska vara "${action.expectedState}"`);
+            }
+
+        } else {
+            // Klick på ugnen under ett icke-element-steg
+            const currentState = comp.furnaceState ? comp.furnaceState[key] : '?';
+            setStatus(`${key}: ${currentState !== undefined ? currentState : '?'} (inte rätt steg för detta element)`);
+        }
+    }
+
+    /** Uppdaterar färgen på ett interaktivt ugns-element baserat på dess furnaceState */
+    function updateFurnaceElementVisual(comp, key) {
+        const state = comp.furnaceState[key];
+        let color, emissiveCol = 0x000000, emissiveInt = 0;
+
+        if (key.startsWith('HATCH_')) {
+            // Lucka: visar brännartillstånd inuti sektionen
+            const hSec = key.split('_')[1];
+            if (state === 'open') {
+                const anyBurner = [1,2,3,4,5,6].some(n => comp.furnaceState[`BURNER_${hSec}${n}`]);
+                const pilotLit  = comp.furnaceState[`PILOT_${hSec}`] === 'lit';
+                if (anyBurner)     { color = 0xff6600; emissiveCol = 0xff3300; emissiveInt = 0.7; }
+                else if (pilotLit) { color = 0xff9800; emissiveCol = 0xff6600; emissiveInt = 0.4; }
+                else               { color = 0x1a1a1a; }
+            } else {
+                color = 0x6d4c41; // stängd – brun/mörk eld-färg
+            }
+        } else if (key.startsWith('BURNER_')) {
+            // Brännare disc: tänd = orange glow, släckt = mörkgrå
+            if (state === true) {
+                color = 0xff6600; emissiveCol = 0xff4400; emissiveInt = 0.8;
+            } else {
+                color = 0x2a2a2a;
+            }
+        } else if (state === 'closed' || state === 'off' || state === false) {
+            color = 0x4caf50; // grön = säker/stängd
+        } else if (state === 'open' || state === 'on') {
+            color = 0xf44336; // röd = öppen/aktiv
+        } else if (state === true) {
+            color = 0xf44336;
+        } else if (state === 'lit') {
+            color = 0xff9800; emissiveCol = 0xff9800; emissiveInt = 0.6;
+        } else if (state === 'adjusted') {
+            color = 0x29b6f6; // blå = justerad
+        } else {
+            color = 0x9e9e9e; // grå = okänt
+        }
+
+        comp.mesh.traverse(child => {
+            if (!child.userData.furnaceKey || child.userData.furnaceKey !== key) return;
+            const applyColor = (mesh) => {
+                if (!mesh.isMesh || !mesh.material) return;
+                mesh.material = mesh.material.clone();
+                mesh.material.color.setHex(color);
+                mesh.material.emissive = new THREE.Color(emissiveCol);
+                mesh.material.emissiveIntensity = emissiveInt;
+            };
+            applyColor(child);
+            child.traverse(part => { if (part !== child) applyColor(part); });
+        });
+
+        // Update TSO flow-direction arrow rotation
+        if (key.startsWith('TSO_')) {
+            comp.mesh.traverse(child => {
+                if (child.userData.tsoArrowKey !== key) return;
+                if (state === 'open') {
+                    child.rotation.set(Math.PI, 0, 0);   // arrow points DOWN = with flow
+                } else {
+                    child.rotation.set(0, 0, -Math.PI / 2); // arrow points RIGHT = closed/blocked
+                }
+            });
+        }
+    }
+
     // --- Move mode ---
     function startMove(comp) {
+        if (scenarioLocked) {
+            setStatus('Scenarieläge — komponentmanipulation är inaktiverad');
+            return;
+        }
         if (comp.connections && comp.connections.length > 0) {
             setStatus('Kan inte flytta: komponenten har aktiva kopplingar. Koppla loss först.');
             return;
@@ -3777,6 +3967,10 @@
     document.getElementById('btn-redo').addEventListener('click', redo);
 
     document.getElementById('btn-delete').addEventListener('click', () => {
+        if (scenarioLocked) {
+            setStatus('Scenarieläge — komponentmanipulation är inaktiverad');
+            return;
+        }
         if (selectedPipe) {
             pushUndo();
             const pipe = selectedPipe;
@@ -4539,6 +4733,31 @@
             list.appendChild(card);
         }
 
+        // --- Section 3: Ugnsmoduler (furnace scenarios, always available – preload their own canvas) ---
+        const furnaceLabel = document.createElement('div');
+        furnaceLabel.className = 'seq-section-label';
+        furnaceLabel.textContent = 'Ugnsmoduler';
+        list.appendChild(furnaceLabel);
+
+        for (const [key, scenario] of Object.entries(FURNACE_SCENARIOS)) {
+            const card = document.createElement('div');
+            card.className = 'sequence-card';
+            card.innerHTML = `
+                <div class="seq-card-icon">${scenario.icon}</div>
+                <div class="seq-card-body">
+                    <div class="seq-card-name">${scenario.name}</div>
+                    <div class="seq-card-desc">${scenario.description}</div>
+                    <div class="seq-card-diff diff-hard">${scenario.difficulty}</div>
+                    <div class="seq-card-req">Laddar automatiskt ugn och V-XXX4</div>
+                </div>
+            `;
+            card.addEventListener('click', () => {
+                document.getElementById('sequence-modal').style.display = 'none';
+                startFurnaceScenario(key);
+            });
+            list.appendChild(card);
+        }
+
         document.getElementById('sequence-modal').style.display = 'flex';
     }
 
@@ -4563,6 +4782,17 @@
             clearInterval(sequenceValidationInterval);
             sequenceValidationInterval = null;
         }
+        // Stop furnace timer if running
+        if (furnaceTimerInterval) {
+            clearInterval(furnaceTimerInterval);
+            furnaceTimerInterval = null;
+        }
+        furnaceTimerStart = null;
+        document.getElementById('seq-timer-display').style.display = 'none';
+        document.getElementById('seq-ccr-action').style.display = 'none';
+
+        const wasFurnaceScenario = activeSequence && activeSequence.isFurnaceScenario;
+
         // Clear faults if it was a fault scenario
         if (activeSequence && activeSequence.isFaultScenario) {
             clearAllFaults();
@@ -4574,7 +4804,18 @@
         sequenceStepPassing = false;
         clearTargetButtonHighlight();
         document.getElementById('sequence-panel').style.display = 'none';
-        setStatus('Sekvens avbruten');
+
+        // Restore original canvas if furnace scenario
+        if (wasFurnaceScenario) {
+            scenarioLocked = false;
+            if (furnaceSavedCanvas) {
+                restoreCanvas(furnaceSavedCanvas);
+                furnaceSavedCanvas = null;
+            }
+            setStatus('Ugnsscenario avbrutet — arbetsyta återställd');
+        } else {
+            setStatus('Sekvens avbruten');
+        }
     }
 
     function updateSequenceUI() {
@@ -4583,16 +4824,36 @@
         const total = steps.length;
 
         if (sequenceCompleted) {
-            const prefix = activeSequence.isFaultScenario ? 'Scenario klart!' :
+            const isFurnace = activeSequence.isFurnaceScenario;
+            const prefix = isFurnace ? '🔥 Ugnsuppstart klar!' :
+                           activeSequence.isFaultScenario ? 'Scenario klart!' :
                            activeSequence.isExercise ? 'Övning klar! ✓' : 'Sekvens klar!';
             document.getElementById('seq-step-label').textContent = '';
             document.getElementById('seq-step-instruction').textContent = prefix;
-            document.getElementById('seq-step-detail').textContent = 'Alla steg har slutförts framgångsrikt.';
+            document.getElementById('seq-step-detail').textContent = isFurnace ?
+                'Ugnen är nu i normal drift. Välj sekvens → Ugnsmoduler för att köra igen.' :
+                'Alla steg har slutförts framgångsrikt.';
             document.getElementById('seq-step-status').textContent = '';
             document.getElementById('seq-step-status').className = 'seq-step-status complete';
             document.getElementById('seq-progress-fill').style.width = '100%';
+            document.getElementById('seq-ccr-action').style.display = 'none';
+            document.getElementById('seq-timer-display').style.display = 'none';
+            if (furnaceTimerInterval) { clearInterval(furnaceTimerInterval); furnaceTimerInterval = null; }
             clearTargetButtonHighlight();
             sequenceHighlightComp = null;
+            // Furnace scenario: restore original canvas after 3s
+            if (isFurnace) {
+                scenarioLocked = false;
+                setTimeout(() => {
+                    if (furnaceSavedCanvas) {
+                        restoreCanvas(furnaceSavedCanvas);
+                        furnaceSavedCanvas = null;
+                    }
+                    document.getElementById('sequence-panel').style.display = 'none';
+                    activeSequence = null;
+                    setStatus('🔥 Ugnsuppstart genomförd! Arbetsyta återställd.');
+                }, 3000);
+            }
             return;
         }
 
@@ -4600,6 +4861,8 @@
         const progress = (sequenceStepIndex / total) * 100;
         document.getElementById('seq-progress-fill').style.width = progress + '%';
         document.getElementById('seq-step-label').textContent = `Steg ${sequenceStepIndex + 1} / ${total}`;
+        // Keep debug input in sync as steps advance normally
+        if (debugMode) document.getElementById('seq-debug-step').value = sequenceStepIndex + 1;
         document.getElementById('seq-step-instruction').textContent = step.instruction;
         document.getElementById('seq-step-detail').textContent = step.detail;
         document.getElementById('seq-step-status').textContent = 'Väntar...';
@@ -4614,6 +4877,43 @@
             sequenceHighlightComp = findComponentByTypeIndex(step.targetComponent.type, step.targetComponent.index);
         } else {
             sequenceHighlightComp = null;
+        }
+
+        // --- CCR-knapp ---
+        const ccrDiv = document.getElementById('seq-ccr-action');
+        const timerDiv = document.getElementById('seq-timer-display');
+        if (step.action.type === 'furnace_ccr') {
+            document.getElementById('seq-ccr-message').textContent = step.action.ccrMessage || 'Bekräfta med CCR.';
+            ccrDiv.style.display = 'block';
+        } else {
+            ccrDiv.style.display = 'none';
+        }
+
+        // --- Timer ---
+        if (step.action.type === 'furnace_timer') {
+            // Start timer if not already running for this step
+            if (!furnaceTimerStart) {
+                furnaceTimerStart = Date.now();
+                furnaceTimerDuration = step.action.duration;
+            }
+            timerDiv.style.display = 'block';
+            // Clear any previous interval
+            if (furnaceTimerInterval) clearInterval(furnaceTimerInterval);
+            furnaceTimerInterval = setInterval(() => {
+                if (!furnaceTimerStart) { clearInterval(furnaceTimerInterval); return; }
+                const elapsed = (Date.now() - furnaceTimerStart) / 1000;
+                const remaining = Math.max(0, furnaceTimerDuration - elapsed);
+                timerDiv.textContent = `⏱ ${remaining.toFixed(0)}s`;
+                if (remaining <= 0) {
+                    clearInterval(furnaceTimerInterval);
+                    furnaceTimerInterval = null;
+                    timerDiv.textContent = '⏱ 0s — klar!';
+                }
+            }, 500);
+        } else {
+            timerDiv.style.display = 'none';
+            if (furnaceTimerInterval) { clearInterval(furnaceTimerInterval); furnaceTimerInterval = null; }
+            if (step.action.type !== 'furnace_timer') furnaceTimerStart = null;
         }
 
     }
@@ -4703,6 +5003,32 @@
                     const toMatch   = toComp.type   === action.toType   || toComp.definition.type   === action.toType;
                     return fromMatch && toMatch;
                 });
+            }
+
+            // --- Ugnsmodul-specifika action-typer ---
+
+            case 'furnace_interact': {
+                // Validerar att furnaceState[key] === targetState (sätts av handleFurnaceElementClick)
+                const comp = findComponentByTypeIndex(action.componentType, 0);
+                return comp?.furnaceState?.[action.key] === action.targetState;
+            }
+
+            case 'furnace_verify': {
+                // Kräver att användaren klickat elementet (sätter _verified-flagga)
+                const comp = findComponentByTypeIndex(action.componentType, 0);
+                return comp?.furnaceState?.[action.key + '_verified'] === true;
+            }
+
+            case 'furnace_ccr': {
+                // Kräver att CCR-knappen klickats (sätter ccrKey = true)
+                const comp = findComponentByTypeIndex(action.componentType, 0);
+                return comp?.furnaceState?.[action.ccrKey] === true;
+            }
+
+            case 'furnace_timer': {
+                // Validerar att minst action.duration sekunder passerat sedan timern startades
+                if (!furnaceTimerStart) return false;
+                return (Date.now() - furnaceTimerStart) >= (action.duration * 1000);
             }
 
             default:
@@ -4814,6 +5140,47 @@
         document.getElementById('sequence-modal').style.display = 'none';
     });
     document.getElementById('btn-cancel-sequence').addEventListener('click', cancelSequence);
+
+    // ── Debug mode ───────────────────────────────────────────────────────────
+    let debugMode = false;
+    document.getElementById('btn-debug-mode').addEventListener('click', () => {
+        debugMode = !debugMode;
+        document.getElementById('btn-debug-mode').classList.toggle('active', debugMode);
+        document.getElementById('seq-debug-bar').style.display = debugMode ? 'flex' : 'none';
+        if (debugMode && activeSequence) {
+            document.getElementById('seq-debug-step').max = activeSequence.steps.length;
+            document.getElementById('seq-debug-step').value = sequenceStepIndex + 1;
+        }
+    });
+
+    function debugJumpToStep(targetIndex) {
+        if (!activeSequence) return;
+        const total = activeSequence.steps.length;
+        targetIndex = Math.max(0, Math.min(total - 1, targetIndex));
+        // Clear timer state so it doesn't carry over
+        if (furnaceTimerInterval) { clearInterval(furnaceTimerInterval); furnaceTimerInterval = null; }
+        furnaceTimerStart = null;
+        sequenceStepPassing = false;
+        sequenceStepIndex = targetIndex;
+        document.getElementById('seq-debug-step').value = targetIndex + 1;
+        updateSequenceUI();
+        setStatus(`🔧 Debug: hoppade till steg ${targetIndex + 1} / ${total}`);
+    }
+
+    document.getElementById('btn-debug-jump').addEventListener('click', () => {
+        const val = parseInt(document.getElementById('seq-debug-step').value, 10);
+        if (!isNaN(val)) debugJumpToStep(val - 1);
+    });
+    document.getElementById('seq-debug-step').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const val = parseInt(e.target.value, 10);
+            if (!isNaN(val)) debugJumpToStep(val - 1);
+        }
+    });
+    document.getElementById('btn-debug-next').addEventListener('click', () => {
+        if (!activeSequence) return;
+        debugJumpToStep(sequenceStepIndex + 1);
+    });
 
     // Close modal on backdrop click
     document.getElementById('sequence-modal').addEventListener('click', (e) => {
@@ -4949,6 +5316,60 @@
         updateSequenceUI();
         startSequenceValidation();
     }
+
+    // =========================================================
+    // --- Ugnsmodul: Scenario-start, CCR-knapp ---
+    // =========================================================
+
+    function startFurnaceScenario(key) {
+        const scenario = FURNACE_SCENARIOS[key];
+        if (!scenario) return;
+
+        // Spara nuvarande arbetsyta
+        furnaceSavedCanvas = serializeCanvas();
+
+        // Rensa scenen och ladda preload
+        restoringSnapshot = true;
+        // Use restoreCanvas to place furnace + v_xxx4
+        restoreCanvas(scenario.preload);
+        restoringSnapshot = false;
+        scenarioLocked = true;
+
+        // Auto-frame kameran mot ugnen
+        const furnaceComp = placedComponents.find(c => c.type === 'furnace_training');
+        if (furnaceComp) {
+            const box = new THREE.Box3().setFromObject(furnaceComp.mesh);
+            const center = box.getCenter(new THREE.Vector3());
+            camera.position.set(center.x + 2, center.y + 6, center.z + 12);
+            controls.target.copy(center);
+            controls.update();
+        }
+
+        // Starta sekvens
+        activeSequence = scenario;
+        sequenceStepIndex = 0;
+        sequenceCompleted = false;
+        sequenceHighlightComp = null;
+        furnaceTimerStart = null;
+
+        document.getElementById('seq-panel-title').textContent = '🔥 ' + scenario.name;
+        document.getElementById('sequence-panel').style.display = 'block';
+
+        updateSequenceUI();
+        startSequenceValidation();
+    }
+
+    // CCR-knappens click-event (sätts en gång)
+    document.getElementById('btn-ccr-confirm').addEventListener('click', () => {
+        if (!activeSequence) return;
+        const step = activeSequence.steps[sequenceStepIndex];
+        if (!step || step.action.type !== 'furnace_ccr') return;
+        const comp = findComponentByTypeIndex(step.action.componentType, 0);
+        if (!comp) return;
+        comp.furnaceState[step.action.ccrKey] = true;
+        document.getElementById('seq-ccr-action').style.display = 'none';
+        setStatus(`✓ CCR bekräftat: ${step.action.ccrKey}`);
+    });
 
     // Fault button & modal events
     document.getElementById('btn-faults').addEventListener('click', openFaultModal);

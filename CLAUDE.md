@@ -66,13 +66,15 @@ process-builder-3d/
 ├── js/
 │   ├── main.js                # Appens motor: scen, kopplingar, media-modal,
 │   │                          # simulering, sekvenser, port-tooltip
-│   ├── components.js          # 57 komponentdefinitioner med 3D-geometri
+│   ├── components.js          # 59 komponentdefinitioner med 3D-geometri
 │   │                          # och defaultMedia på portar
-│   ├── componentLibrary.js    # Vänster panel: 13 kategorier, sökning, kort
+│   ├── componentLibrary.js    # Vänster panel: 14 kategorier, sökning, kort
 │   ├── media.js               # 31 mediatyper (färg, fas, faroklass)
 │   ├── pid-export.js          # P&ID-export till SVG
 │   └── sequences.js           # Uppstartssekvenser + guidade byggövningar
+│                              # + FURNACE_SCENARIOS (ugnsläromodul, 52 steg)
 ├── process description/       # Processbeskrivningar som referensmaterial
+├── TRAINING_MODULE.md         # Dokumentation: ugnsläromodulens design och status
 └── data/
     └── saved-processes/       # Sparade processkonfigurationer
 ```
@@ -125,8 +127,8 @@ process-builder-3d/
 ```
 
 ## Aktuell Status
-Fas 1, 2 och Fas 3 (steg 1–8) är klara. Applikationen är fullt körbar med:
-- 57 komponenter med detaljerade 3D-modeller (13 kategorier inkl. Anslutningar)
+Fas 1, 2 och Fas 3 (steg 1–8) + Läromodul (ugnsuppstart) är klara. Applikationen är fullt körbar med:
+- **59 komponenter** med detaljerade 3D-modeller (14 kategorier inkl. Läromoduler)
 - 31 mediatyper, automatiskt mediaval på ~37 portar
 - Manuell och auto-koppling av rörledningar
 - Spara/ladda (namngivna slots, JSON export/import)
@@ -138,13 +140,15 @@ Fas 1, 2 och Fas 3 (steg 1–8) är klara. Applikationen är fullt körbar med:
 - Batterigräns-markörer för inter-anläggningskopplingar
 - **Prov-Läge (Exam Mode)** — examinationsläge utan hjälpfunktioner
 - **Felsökningsscenarier (5 st)** — pumpavbrott, ventil fastnar, kolvpump, reglerventil, överhettning
-- **Bypassledningar (T-anslutning mot rör)** — rör kan avslutas på ett befintligt rör (end-tee), möjliggör bypass-konfigurationer
-- **Koalescer** — vertikal vessel för vatten/gasolin-separation med 4 portar (tvåfas ut)
+- **Bypassledningar (T-anslutning mot rör)** — end-tee-koppling mot befintligt rör
+- **Koalescer** — vertikal vessel för vatten/gasolin-separation med 4 portar
 - **Rekontakteringstank** — horisontell drum + absorptionstorn + survattenpotta med 5 portar
+- **Ugnsläromodul (furnace_training + v_xxx4_drum)** — 52-stegs interaktiv uppstartssekvens för självdragsugn med 3 sektioner (A/B/C), 6 brännare/sektion. Se TRAINING_MODULE.md.
+- **Debugläge i sekvensmodulen** — hoppa/skippa steg för snabb testning
 - P&ID-export (SVG)
 
 ## Nästa prioriterade steg
-1. **Läromodul: Uppstart/tändning av ugn** — detaljerad ugnsmodell med steg-för-steg sekvens för tändning, kontroll av flamövervakare, purge, mm.
+1. Ytterligare förbättringar av ugnsläromodulen (fler verifieringssteg, förbättrad visuell feedback)
 2. Fler guidade övningar (t.ex. bensinavsvavlingsanläggning HDS)
 3. Förbättrad P&ID-export med ISA-symboler
 4. Fler felsökningsscenarier (läckage-typer, tryckalarm)

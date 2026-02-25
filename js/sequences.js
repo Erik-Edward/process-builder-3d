@@ -534,3 +534,314 @@ const GUIDED_EXERCISES = {
         ]
     }
 };
+
+/**
+ * FURNACE_SCENARIOS - Interaktiva läromoduler för ugnsuppstart.
+ * Använder furnace_interact / furnace_verify / furnace_ccr / furnace_timer action-typer.
+ * Scenario-preload placerar ugn + V-XXX4 automatiskt på arbetsytan.
+ */
+const FURNACE_SCENARIOS = {
+    furnace_startup: {
+        name: 'Uppstart ugn F-XXX1',
+        description: 'Steg-för-steg tändning av självdragsugn med 3 sektioner (A/B/C) och 6 brännare per sektion. Inkl. vädring, pilotrör och brännaruppstart.',
+        icon: '🔥',
+        difficulty: 'Avancerad',
+        isFurnaceScenario: true,
+        preload: {
+            components: [
+                { type: 'furnace_training', id: 1, x: 0,  z: 0, rotation: 0 },
+                { type: 'v_xxx4_drum',      id: 2, x: 6.5, z: 2.1, rotation: 0 }
+            ],
+            pipes: []
+        },
+        steps: [
+            // =========================================================
+            // FAS 1 — FÖRBEREDELSER (steg 1–9)
+            // =========================================================
+            {
+                instruction: '[FAS 1] Verifiera TSO_AA stängd',
+                detail: 'Sektion A: Kontrollera att TSO_AA (drift-ventil, sektion A) är i stängt läge. Klicka på TSO_AA för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'TSO_AA', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera TSO_AB stängd',
+                detail: 'Kontrollera att TSO_AB (standby-ventil, sektion A) är stängd. Klicka på TSO_AB för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'TSO_AB', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera TSO_BA stängd',
+                detail: 'Sektion B: Kontrollera att TSO_BA (drift-ventil) är stängd. Klicka på TSO_BA för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'TSO_BA', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera TSO_BB stängd',
+                detail: 'Kontrollera att TSO_BB (standby-ventil, sektion B) är stängd. Klicka på TSO_BB för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'TSO_BB', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera TSO_CA stängd',
+                detail: 'Sektion C: Kontrollera att TSO_CA (drift-ventil) är stängd. Klicka på TSO_CA för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'TSO_CA', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera TSO_CB stängd',
+                detail: 'Kontrollera att TSO_CB (standby-ventil, sektion C) är stängd. Klicka på TSO_CB för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'TSO_CB', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera kikventiler sektion A stängda',
+                detail: 'Kontrollera att alla 6 brännarkikventiler (KIKV_A1–A6) i sektion A är stängda. Klicka på KIKV_A1 för att bekräfta kontrollen.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'KIKV_A1', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera kikventiler sektion B stängda',
+                detail: 'Kontrollera att alla 6 brännarkikventiler (KIKV_B1–B6) i sektion B är stängda. Klicka på KIKV_B1 för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'KIKV_B1', expectedState: 'closed' }
+            },
+            {
+                instruction: '[FAS 1] Verifiera kikventiler sektion C stängda',
+                detail: 'Kontrollera att alla 6 brännarkikventiler (KIKV_C1–C6) i sektion C är stängda. Klicka på KIKV_C1 för att bekräfta.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'KIKV_C1', expectedState: 'closed' }
+            },
+
+            // =========================================================
+            // FAS 2 — VÄDRING / ÅNGURÅNGNING (steg 10–21)
+            // =========================================================
+            {
+                instruction: '[FAS 2] Öppna rökgasspjäll (FLUE_DAMPER)',
+                detail: 'Öppna rökgasspjället för att möjliggöra naturlig ventilation av ugnen. Klicka på FLUE_DAMPER (skivan i konvektionsdelen).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'FLUE_DAMPER', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Öppna primärluftregister sektion A',
+                detail: 'Öppna PRIM_AIR_A för att tillåta luft in i sektion A. Klicka på det vänstra luftregistret (vänster rektangel nedtill i sektion A).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'PRIM_AIR_A', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Öppna primärluftregister sektion B',
+                detail: 'Öppna PRIM_AIR_B för att tillåta luft in i sektion B.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'PRIM_AIR_B', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Öppna primärluftregister sektion C',
+                detail: 'Öppna PRIM_AIR_C för att tillåta luft in i sektion C.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'PRIM_AIR_C', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Öppna sekundärluftregister sektion A',
+                detail: 'Öppna SEC_AIR_A (höger luftregister i sektion A).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'SEC_AIR_A', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Öppna sekundärluftregister sektion B',
+                detail: 'Öppna SEC_AIR_B (höger luftregister i sektion B).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'SEC_AIR_B', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Öppna sekundärluftregister sektion C',
+                detail: 'Öppna SEC_AIR_C (höger luftregister i sektion C).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'SEC_AIR_C', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Starta ångurångning (STEAM)',
+                detail: 'Öppna ångtillförseln (STEAM) för att påbörja urångning av ugnen. Klicka på ångnozzeln (höger sida av ugnen).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'STEAM', targetState: 'on' }
+            },
+            {
+                instruction: '[FAS 2] Meddela CCR — logga starttid',
+                detail: 'Kontakta CCR (Central Control Room) och meddela att urångning påbörjats. Klicka på CCR-knappen nedan för att logga starttiden.',
+                action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_LOGGED', ccrMessage: 'Meddela CCR om urångningsstart och be dem logga klocktiden.' }
+            },
+            {
+                instruction: '[FAS 2] Kontrollera V-XXX4 (bränslegastrumman)',
+                detail: 'Kontrollera att bränslegastrumman V-XXX4 inte innehåller kondensatansamling. Klicka på nivåindikatorn (gul rektangel på sidan av V-XXX4).',
+                action: { type: 'furnace_verify', componentType: 'v_xxx4_drum', key: 'V_XXX4_INSPECT', expectedState: false }
+            },
+            {
+                instruction: '[FAS 2] Öppna dräneringsventil V-XXX4 (dränera till fackla)',
+                detail: 'Öppna DRAIN_V_XXX4 för att dränera eventuellt kondensat ur bränslegastrumman till facklan. Klicka på den orange ventilen nedtill på V-XXX4.',
+                action: { type: 'furnace_interact', componentType: 'v_xxx4_drum', key: 'DRAIN_V_XXX4', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 2] Stäng dräneringsventil V-XXX4',
+                detail: 'Stäng DRAIN_V_XXX4 när kondensatet är tömt. Klicka på dräneringsventilen igen för att stänga den.',
+                action: { type: 'furnace_interact', componentType: 'v_xxx4_drum', key: 'DRAIN_V_XXX4', targetState: 'closed' }
+            },
+            {
+                instruction: '[FAS 2] Invänta urångning (30 sekunder)',
+                detail: 'Vänta tills ugnen är ordentligt vädrad. Minst 30 sekunder måste ha gått med ångurångning aktiv. Vänta på countdown.',
+                action: { type: 'furnace_timer', duration: 30 }
+            },
+            {
+                instruction: '[FAS 2] Gasprov — kontrollera brännare A1',
+                detail: 'Ta gasprov vid brännare A1 för att verifiera att ingen explosiv gas finns kvar. Klicka på det grå brännarröret (BURNER_A1) på undersidan av ugnen i sektion A.',
+                action: { type: 'furnace_verify', componentType: 'furnace_training', key: 'BURNER_A1', expectedState: false }
+            },
+
+            // =========================================================
+            // FAS 3A — TÄNDNING SEKTION A (steg 23–29)
+            // =========================================================
+            {
+                instruction: '[FAS 3A] CCR — bekräfta manuell bränsleblockering',
+                detail: 'Be CCR bekräfta att bränslegasreglerventilen är i manuellt läge och stängd. Klicka CCR-knappen nedan när bekräftelse erhållits.',
+                action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_FUEL_MANUAL', ccrMessage: 'Vänta på CCR-bekräftelse: bränslegasreglerventil i manuellt läge och stängd.' }
+            },
+            {
+                instruction: '[FAS 3A] Öppna BLEED-ventil sektion A (lufta bränslegas)',
+                detail: 'Öppna BLEED_A-ventilen på sektionens distributionsledning för att lufta ut eventuell kvarvarande gas. Klicka på BLEED_A (orange kub, bakre änden av sektion A).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'BLEED_A', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3A] Tänd pilotrör sektion A',
+                detail: 'Tänd pilotrör A (PILOT_A). Pilotröret ger tändkällan för huvudbrännarna. Klicka på PILOT_A (liten cylinder nedtill i sektion A).',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'PILOT_A', targetState: 'lit' }
+            },
+            {
+                instruction: '[FAS 3A] CCR — trycksätt sektion A via TSO_AA',
+                detail: 'Be CCR öppna TSO_AA (drift-ventil sektion A) till 0,4 bar för trycksättning av bränsleledan till sektion A. Klicka CCR-knappen nedan.',
+                action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_PRESSURIZE_A', ccrMessage: 'Be CCR öppna TSO_AA till 0,4 bar. Vänta på bekräftelse att trycket är stabilt.' }
+            },
+            {
+                instruction: '[FAS 3A] Öppna brännare A1 (KIKV_A1)',
+                detail: 'Öppna kikventil KIKV_A1 för att täcka brännare 1 i sektion A. Klicka på KIKV_A1.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A1', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3A] Öppna brännare A2 (KIKV_A2)',
+                detail: 'Öppna kikventil KIKV_A2 för brännare 2 i sektion A. Klicka på KIKV_A2.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A2', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3A] Öppna brännare A3 (KIKV_A3)',
+                detail: 'Öppna kikventil KIKV_A3 för brännare 3. Nu är 3 brännare aktiva i sektion A.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A3', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3A] Stäng BLEED-ventil sektion A (3 brännare aktiva)',
+                detail: 'Med 3 brännare tända i sektion A, stäng nu BLEED_A-ventilen. Klicka på BLEED_A för att stänga den.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'BLEED_A', targetState: 'closed' }
+            },
+
+            // =========================================================
+            // FAS 3B — FORTSÄTT SEKTION A (steg 31–33)
+            // =========================================================
+            {
+                instruction: '[FAS 3B] Öppna brännare A4 (KIKV_A4)',
+                detail: 'Öppna KIKV_A4 för brännare 4 i sektion A.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A4', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3B] Öppna brännare A5 (KIKV_A5)',
+                detail: 'Öppna KIKV_A5 för brännare 5 i sektion A.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A5', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3B] Öppna brännare A6 — sektion A klar',
+                detail: 'Öppna KIKV_A6 för brännare 6. Alla 6 brännare i sektion A är nu aktiva.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A6', targetState: 'open' }
+            },
+
+            // =========================================================
+            // FAS 3C — TÄNDNING SEKTION B (steg 34–40)
+            // =========================================================
+            {
+                instruction: '[FAS 3C] Tänd pilotrör sektion B',
+                detail: 'Tänd pilotrör B (PILOT_B). Klicka på PILOT_B i sektion B.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'PILOT_B', targetState: 'lit' }
+            },
+            {
+                instruction: '[FAS 3C] CCR — trycksätt sektion B',
+                detail: 'Be CCR öppna TSO_BA (drift-ventil sektion B) till 0,4 bar för trycksättning av sektion B.',
+                action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_PRESSURIZE_B', ccrMessage: 'Be CCR öppna TSO_BA till 0,4 bar. Bekräfta stabilt tryck.' }
+            },
+            {
+                instruction: '[FAS 3C] Öppna brännare B1 (KIKV_B1)',
+                detail: 'Öppna KIKV_B1 för brännare 1 i sektion B.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_B1', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3C] Öppna brännare B2 (KIKV_B2)',
+                detail: 'Öppna KIKV_B2 för brännare 2 i sektion B.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_B2', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3C] Öppna brännare B3 (KIKV_B3)',
+                detail: 'Öppna KIKV_B3 för brännare 3 i sektion B.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_B3', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3C] Öppna brännare B4 (KIKV_B4)',
+                detail: 'Öppna KIKV_B4 för brännare 4 i sektion B.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_B4', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3C] Öppna brännare B5 (KIKV_B5)',
+                detail: 'Öppna KIKV_B5 för brännare 5 i sektion B.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_B5', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3C] Öppna brännare B6 — sektion B klar',
+                detail: 'Öppna KIKV_B6. Alla 6 brännare i sektion B är nu aktiva.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_B6', targetState: 'open' }
+            },
+
+            // =========================================================
+            // FAS 3D — TÄNDNING SEKTION C (steg 42–48)
+            // =========================================================
+            {
+                instruction: '[FAS 3D] Tänd pilotrör sektion C',
+                detail: 'Tänd pilotrör C (PILOT_C). Klicka på PILOT_C i sektion C.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'PILOT_C', targetState: 'lit' }
+            },
+            {
+                instruction: '[FAS 3D] CCR — trycksätt sektion C',
+                detail: 'Be CCR öppna TSO_CA (drift-ventil sektion C) till 0,4 bar för trycksättning av sektion C.',
+                action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_PRESSURIZE_C', ccrMessage: 'Be CCR öppna TSO_CA till 0,4 bar. Bekräfta stabilt tryck.' }
+            },
+            {
+                instruction: '[FAS 3D] Öppna brännare C1 (KIKV_C1)',
+                detail: 'Öppna KIKV_C1 för brännare 1 i sektion C.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_C1', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3D] Öppna brännare C2 (KIKV_C2)',
+                detail: 'Öppna KIKV_C2 för brännare 2 i sektion C.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_C2', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3D] Öppna brännare C3 (KIKV_C3)',
+                detail: 'Öppna KIKV_C3 för brännare 3 i sektion C.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_C3', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3D] Öppna brännare C4 (KIKV_C4)',
+                detail: 'Öppna KIKV_C4 för brännare 4 i sektion C.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_C4', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3D] Öppna brännare C5 (KIKV_C5)',
+                detail: 'Öppna KIKV_C5 för brännare 5 i sektion C.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_C5', targetState: 'open' }
+            },
+            {
+                instruction: '[FAS 3D] Öppna brännare C6 — alla sektioner tända!',
+                detail: 'Öppna KIKV_C6. Alla 6 brännare i sektion C är nu aktiva. Samtliga tre sektioner brinner!',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_C6', targetState: 'open' }
+            },
+
+            // =========================================================
+            // FAS 4 — NORMAL DRIFT (steg 50–51)
+            // =========================================================
+            {
+                instruction: '[FAS 4] Justera primärluft sektion A',
+                detail: 'Justera PRIM_AIR_A för optimal förbränning. Klicka på PRIM_AIR_A för att sätta den i justerat driftläge.',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'PRIM_AIR_A', targetState: 'adjusted' }
+            },
+            {
+                instruction: '[FAS 4] Finjustera rökgasspjäll — driftläge',
+                detail: 'Finjustera FLUE_DAMPER för korrekt drag (ca −2 mmH₂O). Klicka på FLUE_DAMPER för att sätta den i justerat driftläge. Ugnen är nu i normal drift!',
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'FLUE_DAMPER', targetState: 'adjusted' }
+            }
+        ]
+    }
+};

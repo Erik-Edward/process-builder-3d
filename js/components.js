@@ -5094,5 +5094,661 @@ const COMPONENT_DEFINITIONS = {
 
             return group;
         }
+    },
+
+    // ===== LÄROMODULER =====
+
+    furnace_training: {
+        type: 'furnace_training',
+        name: 'Processugn F-XXX1',
+        icon: '🔥',
+        category: 'Läromoduler',
+        description: 'Interaktiv självdragsugn (3 sektioner A/B/C, 6 brännare/sektion). Används i tändningsläromodulen.',
+        ports: {},
+        parameters: {
+            temp_A:  { value: 0,  unit: '°C',     label: 'Temp sektion A' },
+            temp_B:  { value: 0,  unit: '°C',     label: 'Temp sektion B' },
+            temp_C:  { value: 0,  unit: '°C',     label: 'Temp sektion C' },
+            o2_flue: { value: 21, unit: '%',       label: 'O₂ rökgaser' },
+            draft:   { value: 0,  unit: 'mmH₂O',  label: 'Drag' }
+        },
+        initialFurnaceState: {
+            TSO_AA: 'closed', TSO_AB: 'closed',
+            TSO_BA: 'closed', TSO_BB: 'closed',
+            TSO_CA: 'closed', TSO_CB: 'closed',
+            KIKV_A1: 'closed', KIKV_A2: 'closed', KIKV_A3: 'closed',
+            KIKV_A4: 'closed', KIKV_A5: 'closed', KIKV_A6: 'closed',
+            KIKV_B1: 'closed', KIKV_B2: 'closed', KIKV_B3: 'closed',
+            KIKV_B4: 'closed', KIKV_B5: 'closed', KIKV_B6: 'closed',
+            KIKV_C1: 'closed', KIKV_C2: 'closed', KIKV_C3: 'closed',
+            KIKV_C4: 'closed', KIKV_C5: 'closed', KIKV_C6: 'closed',
+            BLEED_A: 'closed', BLEED_B: 'closed', BLEED_C: 'closed',
+            FLUE_DAMPER: 'closed',
+            PRIM_AIR_A: 'closed', PRIM_AIR_B: 'closed', PRIM_AIR_C: 'closed',
+            SEC_AIR_A:  'closed', SEC_AIR_B:  'closed', SEC_AIR_C:  'closed',
+            STEAM: 'off',
+            PILOT_A: 'unlit', PILOT_B: 'unlit', PILOT_C: 'unlit',
+            BURNER_A1: false, BURNER_A2: false, BURNER_A3: false,
+            BURNER_A4: false, BURNER_A5: false, BURNER_A6: false,
+            BURNER_B1: false, BURNER_B2: false, BURNER_B3: false,
+            BURNER_B4: false, BURNER_B5: false, BURNER_B6: false,
+            BURNER_C1: false, BURNER_C2: false, BURNER_C3: false,
+            BURNER_C4: false, BURNER_C5: false, BURNER_C6: false,
+            CCR_FUEL_MANUAL: false,
+            CCR_PRESSURIZE_A: false, CCR_PRESSURIZE_B: false, CCR_PRESSURIZE_C: false,
+            HATCH_A: 'closed', HATCH_B: 'closed', HATCH_C: 'closed',
+            CCR_LOGGED: false
+        },
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+
+            const LIFT   = 2.0;
+            const FW     = 7.5;
+            const FH     = 3.2;
+            const FD     = 4.0;
+            const FCY    = LIFT + FH / 2;   // 3.6
+            const CONVH  = 1.2;
+            const HDR_Y  = LIFT - 0.3;      // 1.7  — main header height
+            const SUB_Y  = 1.0;             // section distribution header height (lowered for TSO clearance)
+            const FEED_H = LIFT - SUB_Y;    // 1.0  — feed pipe height
+            const HDR_Z  = FD / 2 + 0.10;  // 2.1  — just in front of support legs (legs at z=1.85)
+            // Sub-header spans from back-leg z to front header z
+            const SUB_Z_BACK    = -FD / 2 + 0.15;           // -1.85
+            const SUB_HDR_LEN   = HDR_Z - SUB_Z_BACK;       //  3.95
+            const SUB_HDR_CEN_Z = (HDR_Z + SUB_Z_BACK) / 2; //  0.125
+
+            // ── Materials ──────────────────────────────────────────────────
+            const fireboxMat    = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
+            const glassMat      = new THREE.MeshStandardMaterial({
+                color: 0xb3d1f0, transparent: true, opacity: 0.18, depthWrite: false
+            });
+            const convMat       = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.8 });
+            const stackMat      = new THREE.MeshStandardMaterial({ color: 0x424242 });
+            const divMat        = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
+            const tsoMat        = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
+            const stemMat       = new THREE.MeshStandardMaterial({ color: 0xbdbdbd });
+            const kikvMat       = new THREE.MeshStandardMaterial({ color: 0x90a4ae });
+            const burnerIndMat  = new THREE.MeshStandardMaterial({ color: 0x455a64 });
+            const pilotMat      = new THREE.MeshStandardMaterial({ color: 0x78909c });
+            const airMat        = new THREE.MeshStandardMaterial({ color: 0x607d8b });
+            const damperMat     = new THREE.MeshStandardMaterial({ color: 0x78909c });
+            const fuelMat       = new THREE.MeshStandardMaterial({ color: 0xffd54f });
+            const steelMat      = new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.6 });
+            const hatchPlateMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.85 });
+            const hatchFrameMat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.6 });
+            const tubeMat       = new THREE.MeshStandardMaterial({ color: 0xb0bec5 });
+
+            // ── Steel support frame (8 legs: 4 corners + 4 at section dividers x=±1.25) ──
+            // Centre legs at x=0 removed — they clashed with section B sub-header
+            const legXZ = [
+                [-FW/2+0.15,  FD/2-0.15], [ FW/2-0.15,  FD/2-0.15],  // front corners
+                [-FW/2+0.15, -FD/2+0.15], [ FW/2-0.15, -FD/2+0.15],  // back corners
+                [-1.25,  FD/2-0.15],       [ 1.25,  FD/2-0.15],       // front dividers
+                [-1.25, -FD/2+0.15],       [ 1.25, -FD/2+0.15]        // back dividers
+            ];
+            for (const [lx, lz] of legXZ) {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.14, LIFT, 0.14), steelMat);
+                leg.position.set(lx, LIFT/2, lz);
+                group.add(leg);
+            }
+            for (const lz of [FD/2-0.15, -FD/2+0.15]) {
+                const b = new THREE.Mesh(new THREE.BoxGeometry(FW, 0.14, 0.14), steelMat);
+                b.position.set(0, LIFT-0.07, lz);
+                group.add(b);
+            }
+            for (const lx of [-FW/2+0.15, FW/2-0.15]) {
+                const b = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, FD), steelMat);
+                b.position.set(lx, LIFT-0.07, 0);
+                group.add(b);
+            }
+
+            // ── Firebox — multi-material: face 4 (+z front) = glass ────────
+            // BoxGeometry material order: +x, -x, +y, -y, +z(front), -z(back)
+            const firebox = new THREE.Mesh(
+                new THREE.BoxGeometry(FW, FH, FD),
+                [fireboxMat, fireboxMat, fireboxMat, fireboxMat, glassMat, fireboxMat]
+            );
+            firebox.position.set(0, FCY, 0);
+            group.add(firebox);
+
+            // ── Convection section ─────────────────────────────────────────
+            const conv = new THREE.Mesh(new THREE.BoxGeometry(FW, CONVH, FD), convMat);
+            conv.position.set(0, LIFT + FH + CONVH/2, 0);
+            group.add(conv);
+
+            // ── Single large chimney ───────────────────────────────────────
+            const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 3.0, 12), stackMat);
+            stack.position.set(0, LIFT + FH + CONVH + 1.5, 0);
+            group.add(stack);
+
+            // ── Section dividers ───────────────────────────────────────────
+            for (const dx of [-1.25, 1.25]) {
+                const div = new THREE.Mesh(new THREE.BoxGeometry(0.08, FH, FD), divMat);
+                div.position.set(dx, FCY, 0);
+                group.add(div);
+            }
+
+            // ── FLUE_DAMPER ────────────────────────────────────────────────
+            const flue = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.07, 12), damperMat);
+            flue.position.set(0, LIFT + FH + 0.035, 0);
+            flue.userData.furnaceKey = 'FLUE_DAMPER';
+            group.add(flue);
+
+            // ── STEAM nozzle (right face) ──────────────────────────────────
+            const steam = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.085, 0.28, 8),
+                new THREE.MeshStandardMaterial({ color: 0x80cbc4 })
+            );
+            steam.rotation.z = Math.PI/2;
+            steam.position.set(FW/2 + 0.14, FCY, 0);
+            steam.userData.furnaceKey = 'STEAM';
+            group.add(steam);
+
+            // ── Main fuel gas header (front edge, x-axis) ────────────────
+            const fuelHdr = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.065, 0.065, FW + 0.4, 8), fuelMat
+            );
+            fuelHdr.rotation.z = Math.PI/2;
+            fuelHdr.position.set(0, HDR_Y, HDR_Z);
+            group.add(fuelHdr);
+            // Inlet stub extending right (toward V-XXX4 drum)
+            const fuelStub = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.06, 1.5, 8), fuelMat
+            );
+            fuelStub.rotation.z = Math.PI/2;
+            fuelStub.position.set(FW/2 + 1.05, HDR_Y, HDR_Z);
+            group.add(fuelStub);
+
+            // Per-section BLEED valves are added inside SEC_DEFS.forEach below
+
+            // ── Per-section elements ───────────────────────────────────────
+            const SEC_DEFS = [
+                { sec: 'A', xOff: -2.5, secCol: 0xb71c1c },
+                { sec: 'B', xOff:  0,   secCol: 0x1b5e20 },
+                { sec: 'C', xOff:  2.5, secCol: 0x0d47a1 }
+            ];
+            const BZ = [-1.5, -0.9, -0.3, 0.3, 0.9, 1.5];
+            // Burner indicator rows: [absolute-y, [relative-x offsets]]
+            const BIND_ROWS = [
+                [LIFT + 1.24, [-0.55, 0, 0.55]],   // burners 1-3
+                [LIFT + 1.84, [-0.55, 0, 0.55]]    // burners 4-6
+            ];
+
+            SEC_DEFS.forEach(({ sec, xOff, secCol }) => {
+
+                // ── Colour stripe (top of front face) ─────────────────────
+                const stripe = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.3, 0.1, 0.03),
+                    new THREE.MeshStandardMaterial({ color: secCol, emissive: secCol, emissiveIntensity: 0.3 })
+                );
+                stripe.position.set(xOff, LIFT + FH - 0.10, FD/2 + 0.01);
+                group.add(stripe);
+
+                // ── Section label sprite — small plain dark badge ──────────
+                const lc   = document.createElement('canvas');
+                lc.width   = 128; lc.height = 64;
+                const lctx = lc.getContext('2d');
+                lctx.fillStyle = 'rgba(0,0,0,0.55)';
+                lctx.fillRect(0, 0, 128, 64);
+                lctx.fillStyle = 'white';
+                lctx.font = 'bold 46px Arial';
+                lctx.textAlign = 'center'; lctx.textBaseline = 'middle';
+                lctx.fillText(sec, 64, 32);
+                const lSprite = new THREE.Sprite(
+                    new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(lc) })
+                );
+                lSprite.position.set(xOff, LIFT + FH + 0.18, FD/2 + 0.02);
+                lSprite.scale.set(0.45, 0.22, 1.0);
+                group.add(lSprite);
+
+                // ── Process radiant tubes near ceiling (purely visual) ─────
+                const tubeY = LIFT + FH - 0.22;  // 4.98
+                for (const tz of [-1.4, -0.7, 0, 0.7, 1.4]) {
+                    const tube = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8), tubeMat
+                    );
+                    tube.rotation.z = Math.PI / 2;  // align along x-axis
+                    tube.position.set(xOff, tubeY, tz);
+                    group.add(tube);
+                }
+                // Front-to-back manifolds connecting the tubes at section edges
+                for (const mx of [xOff - 1.08, xOff + 1.08]) {
+                    const manifold = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.05, 0.05, FD - 0.5, 8), tubeMat
+                    );
+                    manifold.rotation.x = Math.PI / 2;  // align along z-axis
+                    manifold.position.set(mx, tubeY, 0);
+                    group.add(manifold);
+                }
+
+                // ── Underside air register boxes — one PRIM+SEC package BESIDE each burner ──
+                // Box sits at x = xOff + AIR_DX (to the right of the feed pipe)
+                // Two stacked boxes: SEC_AIR (upper) + PRIM_AIR (lower), divided by a plate
+                const AIR_DX    = 0.30;  // x-offset from burner feed pipe centre
+                const regFrMat  = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.8 });
+                const BOX_W     = 0.18;  // width in x
+                const BOX_D     = 0.13;  // depth in z
+                const BOX_H     = 0.09;  // height of each section
+                for (let b = 0; b < 6; b++) {
+                    const bz = BZ[b];
+                    const rx = xOff + AIR_DX;
+
+                    // Thin mounting bracket from firebox floor to register assembly
+                    const bracket = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.05, 0.04, 0.05), regFrMat
+                    );
+                    bracket.position.set(rx, LIFT - 0.02, bz);
+                    group.add(bracket);
+
+                    // SEC_AIR box (upper section, closer to firebox floor)
+                    const secBox = new THREE.Mesh(
+                        new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), airMat.clone()
+                    );
+                    secBox.position.set(rx, LIFT - 0.065, bz);
+                    secBox.userData.furnaceKey = `SEC_AIR_${sec}`;
+                    group.add(secBox);
+                    // Louver detail — thin horizontal slit across SEC box face
+                    const secLouver = new THREE.Mesh(
+                        new THREE.BoxGeometry(BOX_W + 0.01, 0.012, BOX_D + 0.01), regFrMat
+                    );
+                    secLouver.position.set(rx, LIFT - 0.065, bz);
+                    group.add(secLouver);
+
+                    // Divider plate separating SEC from PRIM
+                    const divPlate = new THREE.Mesh(
+                        new THREE.BoxGeometry(BOX_W + 0.02, 0.014, BOX_D + 0.02), regFrMat
+                    );
+                    divPlate.position.set(rx, LIFT - 0.115, bz);
+                    group.add(divPlate);
+
+                    // PRIM_AIR box (lower section, below SEC_AIR)
+                    const primBox = new THREE.Mesh(
+                        new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), airMat.clone()
+                    );
+                    primBox.position.set(rx, LIFT - 0.165, bz);
+                    primBox.userData.furnaceKey = `PRIM_AIR_${sec}`;
+                    group.add(primBox);
+                    // Louver detail — thin horizontal slit across PRIM box face
+                    const primLouver = new THREE.Mesh(
+                        new THREE.BoxGeometry(BOX_W + 0.01, 0.012, BOX_D + 0.01), regFrMat
+                    );
+                    primLouver.position.set(rx, LIFT - 0.165, bz);
+                    group.add(primLouver);
+                }
+
+                // ── PILOT nozzle (y = LIFT+0.54, left of centre) ──────────
+                const pilot = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.055, 0.055, 0.22, 8), pilotMat.clone()
+                );
+                pilot.rotation.x = Math.PI / 2;
+                pilot.position.set(xOff - 0.80, LIFT + 0.54, FD/2 + 0.11);
+                pilot.userData.furnaceKey = `PILOT_${sec}`;
+                group.add(pilot);
+
+                // ── KIKV valves on front face (2 rows × 3 cols = 6/section) ─
+                // Row 1 at y=LIFT+0.62 (KIKV_X1..X3), row 2 at y=LIFT+0.80 (KIKV_X4..X6)
+                const KIKV_ROWS = [
+                    { ky: LIFT + 0.62, idxStart: 1 },
+                    { ky: LIFT + 0.80, idxStart: 4 }
+                ];
+                const KIKV_X = [xOff - 0.45, xOff, xOff + 0.45];
+                KIKV_ROWS.forEach(({ ky, idxStart }) => {
+                    KIKV_X.forEach((kx, col) => {
+                        const fKey = `KIKV_${sec}${idxStart + col}`;
+                        // Housing body
+                        const housing = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.10, 0.10, 0.08), kikvMat.clone()
+                        );
+                        housing.position.set(kx, ky, FD/2 + 0.04);
+                        group.add(housing);
+                        // Stem protruding outward in z (furnaceKey for click)
+                        const kStem = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.02, 0.02, 0.10, 6), stemMat
+                        );
+                        kStem.rotation.x = Math.PI / 2;
+                        kStem.position.set(kx, ky, FD/2 + 0.10);
+                        kStem.userData.furnaceKey = fKey;
+                        group.add(kStem);
+                        // T-handle (perpendicular, along x — also clickable)
+                        const kHandle = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.015, 0.015, 0.16, 6), kikvMat.clone()
+                        );
+                        kHandle.rotation.z = Math.PI / 2;
+                        kHandle.position.set(kx, ky, FD/2 + 0.15);
+                        kHandle.userData.furnaceKey = fKey;
+                        group.add(kHandle);
+                    });
+                });
+
+                // ── Inspection hatch (y = LIFT+1.54, height 1.2) ──────────
+                const hFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.05, 1.2, 0.03), hatchFrameMat.clone()
+                );
+                hFrame.position.set(xOff, LIFT + 1.54, FD/2 + 0.012);
+                group.add(hFrame);
+                const hatch = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.9, 1.05, 0.04), hatchPlateMat.clone()
+                );
+                hatch.position.set(xOff, LIFT + 1.54, FD/2 + 0.028);
+                hatch.userData.furnaceKey = `HATCH_${sec}`;
+                group.add(hatch);
+                const hHandle = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.04, 0.04, 0.28, 8), hatchFrameMat.clone()
+                );
+                hHandle.rotation.z = Math.PI / 2;
+                hHandle.position.set(xOff - 0.7, LIFT + 1.54, FD/2 + 0.052);
+                hHandle.userData.furnaceKey = `HATCH_${sec}`;
+                group.add(hHandle);
+                // Burner indicator discs inside hatch area
+                let bIdx = 0;
+                for (const [by, bxArr] of BIND_ROWS) {
+                    for (const bxRel of bxArr) {
+                        const burnerInd = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.1, 0.1, 0.06, 12), burnerIndMat.clone()
+                        );
+                        burnerInd.position.set(xOff + bxRel, by, FD/2 + 0.058);
+                        burnerInd.userData.furnaceKey = `BURNER_${sec}${bIdx + 1}`;
+                        group.add(burnerInd);
+                        bIdx++;
+                    }
+                }
+
+                // ── Underspace: section distribution header + TSO A/B + feed pipes ──
+                // Distribution sub-header (z-axis, full depth)
+                // Distribution sub-header (z-axis, back-to-front, ending at main header z)
+                const subHdr = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.05, SUB_HDR_LEN, 8), fuelMat
+                );
+                subHdr.rotation.x = Math.PI / 2;
+                subHdr.position.set(xOff, SUB_Y, SUB_HDR_CEN_Z);
+                group.add(subHdr);
+
+                // ── BLEED valve — tees off top of section sub-header at back end ──
+                // Valve body sits on top of sub-header; vent pipe rises upward (bränngas till atmosfär)
+                const bleedMat = new THREE.MeshStandardMaterial({ color: 0xffa726 });
+                // Short vertical stub from sub-header up to valve body
+                const bleedStub = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.025, 0.025, 0.13, 6), bleedMat.clone()
+                );
+                bleedStub.position.set(xOff, SUB_Y + 0.065, SUB_Z_BACK);
+                group.add(bleedStub);
+                // Valve body (clickable orange box)
+                const bleedBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.15, 0.15, 0.15), bleedMat.clone()
+                );
+                bleedBody.position.set(xOff, SUB_Y + 0.205, SUB_Z_BACK);
+                bleedBody.userData.furnaceKey = `BLEED_${sec}`;
+                group.add(bleedBody);
+                // Vent pipe rising upward from valve body
+                const bleedVent = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.022, 0.022, 0.40, 6), bleedMat.clone()
+                );
+                bleedVent.position.set(xOff, SUB_Y + 0.48, SUB_Z_BACK);
+                group.add(bleedVent);
+                // Vent cap (open to atmosphere — wider flared top)
+                const bleedCap = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.038, 0.022, 0.04, 6), bleedMat.clone()
+                );
+                bleedCap.position.set(xOff, SUB_Y + 0.70, SUB_Z_BACK);
+                group.add(bleedCap);
+
+                // TSO A (drift/duty) and TSO B (standby) — parallel vertical branches
+                // Both at z=HDR_Z, x = xOff ± BRANCH_DX
+                const BRANCH_DX  = 0.28;
+                const BRANCH_H   = HDR_Y - SUB_Y;        // 0.7 — plenty of clearance
+                const BRANCH_MID = (HDR_Y + SUB_Y) / 2;  // 1.35
+
+                // Cross-connector at SUB_Y merging both branches into sub-header
+                const crossConn = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.04, 0.04, BRANCH_DX * 2 + 0.1, 6), fuelMat
+                );
+                crossConn.rotation.z = Math.PI / 2;
+                crossConn.position.set(xOff, SUB_Y, HDR_Z);
+                group.add(crossConn);
+
+                const actuatorMat = new THREE.MeshStandardMaterial({ color: 0x455a64, roughness: 0.5 });
+                const indicMat    = new THREE.MeshStandardMaterial({ color: 0xffeb3b, emissive: 0xffeb3b, emissiveIntensity: 0.3 });
+
+                [['A', xOff - BRANCH_DX], ['B', xOff + BRANCH_DX]].forEach(([ab, bx]) => {
+                    const fKey = `TSO_${sec}${ab}`;
+
+                    // Vertical branch pipe (full height of branch)
+                    const branchPipe = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.04, 0.04, BRANCH_H + 0.04, 6), fuelMat
+                    );
+                    branchPipe.position.set(bx, BRANCH_MID, HDR_Z);
+                    group.add(branchPipe);
+
+                    // ── Actuated on/off valve body ─────────────────────────────
+                    // Lower pipe flange (inlet side) — carries furnaceKey for colour update
+                    const flangeBot = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.115, 0.115, 0.035, 10), tsoMat.clone()
+                    );
+                    flangeBot.position.set(bx, BRANCH_MID - 0.12, HDR_Z);
+                    flangeBot.userData.furnaceKey = fKey;
+                    group.add(flangeBot);
+
+                    // Valve body cylinder (between flanges) — carries furnaceKey
+                    const valveBody = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.082, 0.082, 0.20, 10), tsoMat.clone()
+                    );
+                    valveBody.position.set(bx, BRANCH_MID, HDR_Z);
+                    valveBody.userData.furnaceKey = fKey;
+                    group.add(valveBody);
+
+                    // Upper pipe flange (outlet side) — carries furnaceKey
+                    const flangeTop = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.115, 0.115, 0.035, 10), tsoMat.clone()
+                    );
+                    flangeTop.position.set(bx, BRANCH_MID + 0.12, HDR_Z);
+                    flangeTop.userData.furnaceKey = fKey;
+                    group.add(flangeTop);
+
+                    // ── Pneumatic actuator — side-mounted, protrudes in +z ─────
+                    // Actuator yoke (connects valve body to actuator)
+                    const yoke = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.06, 0.06, 0.12), actuatorMat
+                    );
+                    yoke.position.set(bx, BRANCH_MID, HDR_Z + 0.10);
+                    group.add(yoke);
+
+                    // Actuator cylinder body (spring-return / pneumatic canister)
+                    const actCyl = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.062, 0.062, 0.22, 12), actuatorMat
+                    );
+                    actCyl.rotation.x = Math.PI / 2;
+                    actCyl.position.set(bx, BRANCH_MID, HDR_Z + 0.24);
+                    group.add(actCyl);
+
+                    // Front end cap (flat disc closing the cylinder)
+                    const endCap = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.068, 0.068, 0.022, 12), actuatorMat
+                    );
+                    endCap.rotation.x = Math.PI / 2;
+                    endCap.position.set(bx, BRANCH_MID, HDR_Z + 0.361);
+                    group.add(endCap);
+
+                    // Position indicator rod (yellow nub — shows open/closed)
+                    const indicator = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.014, 0.014, 0.07, 6), indicMat
+                    );
+                    indicator.rotation.x = Math.PI / 2;
+                    indicator.position.set(bx, BRANCH_MID, HDR_Z + 0.42);
+                    group.add(indicator);
+
+                    // ── Flow-direction arrow (Group — rotated by updateFurnaceElementVisual) ──
+                    // Arrow points DOWN = open/with-flow; SIDEWAYS = closed/blocked
+                    const arrowGroup = new THREE.Group();
+                    arrowGroup.userData.tsoArrowKey = fKey;
+                    const arrowMat = new THREE.MeshStandardMaterial({
+                        color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.7
+                    });
+                    // Arrow head (cone, apex at +y by default)
+                    const arrowCone = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.034, 0.085, 6), arrowMat
+                    );
+                    arrowCone.position.set(0, 0.045, 0);
+                    arrowGroup.add(arrowCone);
+                    // Arrow shaft
+                    const arrowShaft = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.013, 0.013, 0.065, 6), arrowMat
+                    );
+                    arrowShaft.position.set(0, -0.012, 0);
+                    arrowGroup.add(arrowShaft);
+                    // Initial state = 'closed' → arrow points sideways (+x): rotate group -90° around z
+                    arrowGroup.rotation.z = -Math.PI / 2;
+                    // On the front face of the actuator end cap (z = HDR_Z+0.46)
+                    arrowGroup.position.set(bx, BRANCH_MID, HDR_Z + 0.46);
+                    group.add(arrowGroup);
+                });
+
+                // Feed pipes (6 per section) — each is the clickable "burner" element
+                // furnaceKey = BURNER_secN so user can click the visible feed pipe directly
+                for (let b = 0; b < 6; b++) {
+                    const feed = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.028, 0.028, FEED_H, 6),
+                        new THREE.MeshStandardMaterial({ color: 0x9e9e9e })
+                    );
+                    feed.position.set(xOff, SUB_Y + FEED_H / 2, BZ[b]);
+                    feed.userData.furnaceKey = `BURNER_${sec}${b + 1}`;
+                    group.add(feed);
+                }
+            });
+
+            return group;
+        }
+    },
+
+    v_xxx4_drum: {
+        type: 'v_xxx4_drum',
+        name: 'V-XXX4 Bränslegastrumma',
+        icon: '🛢',
+        category: 'Läromoduler',
+        description: 'Stående bränslegastrumma med nivåindikator. Klicka på inspektionsknappen för att avläsa vätskenivån.',
+        ports: {},
+        parameters: {
+            level: { value: 0, unit: '%', label: 'Vätskenivå' }
+        },
+        initialFurnaceState: {
+            V_XXX4_INSPECT: false,
+            DRAIN_V_XXX4: 'closed'
+        },
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+
+            const R     = 0.7;              // cylinder radius
+            const TH    = 2.8;              // cylinder height
+            const LEG_H = 1.4;              // support skirt height
+            const CY    = LEG_H + TH / 2;  // body centre y = 2.8
+            const HDR_Y = 1.7;              // matches furnace fuel header height
+
+            const drumMat  = new THREE.MeshStandardMaterial({ color: 0x607d8b, roughness: 0.6 });
+            const capMat   = new THREE.MeshStandardMaterial({ color: 0x546e7a });
+            const fuelMat  = new THREE.MeshStandardMaterial({ color: 0xffd54f });
+            const inspMat  = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffd54f, emissiveIntensity: 0.4 });
+            const levelMat = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffd54f, emissiveIntensity: 0.45 });
+            const skirtMat = new THREE.MeshStandardMaterial({ color: 0x546e7a, side: THREE.DoubleSide });
+
+            // Vertical cylinder body
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, TH, 16), drumMat);
+            body.position.set(0, CY, 0);
+            group.add(body);
+
+            // Dome top (hemisphere)
+            const dome = new THREE.Mesh(
+                new THREE.SphereGeometry(R, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                capMat
+            );
+            dome.position.set(0, LEG_H + TH, 0);
+            group.add(dome);
+
+            // Bottom ellipsoidal cap
+            const btmCap = new THREE.Mesh(
+                new THREE.SphereGeometry(R, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+                capMat
+            );
+            btmCap.position.set(0, LEG_H, 0);
+            group.add(btmCap);
+
+            // Support skirt (open cylinder as legs)
+            const skirt = new THREE.Mesh(
+                new THREE.CylinderGeometry(R + 0.04, R + 0.06, LEG_H, 16, 1, true),
+                skirtMat
+            );
+            skirt.position.set(0, LEG_H / 2, 0);
+            group.add(skirt);
+
+            // Base ring / saddle plate
+            const base = new THREE.Mesh(
+                new THREE.CylinderGeometry(R + 0.12, R + 0.12, 0.07, 16),
+                new THREE.MeshStandardMaterial({ color: 0x424242 })
+            );
+            base.position.set(0, 0.035, 0);
+            group.add(base);
+
+            // Gas outlet nozzle (horizontal, points LEFT toward furnace fuel header)
+            // At HDR_Y=1.7 to match furnace, extends from tank wall to furnace stub tip
+            const nozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.065, 0.065, 1.8, 8), fuelMat
+            );
+            nozzle.rotation.z = Math.PI / 2;
+            nozzle.position.set(-(R + 0.9), HDR_Y, 0);  // z=0 local; drum placed at world z=HDR_Z=2.1
+            group.add(nozzle);
+
+            // Level indicator glass (yellow vertical band — clickable: avläs nivå)
+            const levelBand = new THREE.Mesh(
+                new THREE.BoxGeometry(0.07, TH * 0.65, 0.07), levelMat
+            );
+            levelBand.position.set(R + 0.04, CY, 0);
+            levelBand.userData.furnaceKey = 'V_XXX4_INSPECT';  // large easy-to-click target
+            group.add(levelBand);
+
+            // Inspection instrument nozzle (also clickable)
+            const inspectMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, 0.12, 8), inspMat
+            );
+            inspectMesh.rotation.z = Math.PI / 2;
+            inspectMesh.position.set(R + 0.1, CY + 0.7, 0);
+            inspectMesh.userData.furnaceKey = 'V_XXX4_INSPECT';
+            group.add(inspectMesh);
+
+            // ── Drain valve + flare pipe — on front face (+z) of drum ────────
+            // Positioned outside drum wall so the valve is always clickable.
+            const drainMat  = new THREE.MeshStandardMaterial({ color: 0xffa726 });
+            const flareMat  = new THREE.MeshStandardMaterial({ color: 0x9e9e9e });
+            const DRAIN_Y   = LEG_H - 0.25;  // 1.15 — near drum base, still above skirt bottom
+            const DRAIN_Z0  = R;              // 0.70 — drum wall on +z side
+            const DRAIN_ZV  = R + 0.22;      // 0.92 — valve body centre (outside drum)
+            // Short horizontal stub from drum wall to valve body
+            const drainStub = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.04, 0.04, 0.24, 6), drainMat.clone()
+            );
+            drainStub.rotation.x = Math.PI / 2;
+            drainStub.position.set(0, DRAIN_Y, (DRAIN_Z0 + DRAIN_ZV) / 2);  // z = 0.81
+            group.add(drainStub);
+            // Drain valve body (clickable — DRAIN_V_XXX4) — fully outside drum wall
+            const drainValve = new THREE.Mesh(
+                new THREE.BoxGeometry(0.18, 0.18, 0.18), drainMat.clone()
+            );
+            drainValve.position.set(0, DRAIN_Y, DRAIN_ZV);  // z = 0.92
+            drainValve.userData.furnaceKey = 'DRAIN_V_XXX4';
+            group.add(drainValve);
+            // Horizontal flare pipe continuing forward (+z) from valve
+            const flareH = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.03, 1.0, 6), flareMat
+            );
+            flareH.rotation.x = Math.PI / 2;
+            flareH.position.set(0, DRAIN_Y, DRAIN_ZV + 0.59);  // z = 1.51, pipe from 1.01 to 2.01
+            group.add(flareH);
+            // Flare cap (open end to atmosphere/flare)
+            const flareCap = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.055, 0.03, 0.06, 6), drainMat.clone()
+            );
+            flareCap.rotation.x = Math.PI / 2;
+            flareCap.position.set(0, DRAIN_Y, DRAIN_ZV + 1.12);  // z = 2.04
+            group.add(flareCap);
+
+            return group;
+        }
     }
 };

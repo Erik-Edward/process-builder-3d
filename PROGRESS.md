@@ -29,13 +29,15 @@ process-builder-3d/
 ├── js/
 │   ├── main.js                # Appens motor: Three.js-scen, kamera,
 │   │                          # placering, kopplingar, media-modal,
-│   │                          # defaultMedia-logik, simulering, sekvenser
-│   ├── components.js          # 57 komponentdefinitioner med 3D-geometri
-│   │                          # och defaultMedia på relevanta portar
-│   ├── componentLibrary.js    # Vänster panel: flikar (13 kategorier), sökning, kort
+│   │                          # defaultMedia-logik, simulering, sekvenser,
+│   │                          # ugnsläromodul (furnaceState, click-handler, debugläge)
+│   ├── components.js          # 59 komponentdefinitioner med 3D-geometri
+│   │                          # och defaultMedia på portar (inkl. furnace_training, v_xxx4_drum)
+│   ├── componentLibrary.js    # Vänster panel: flikar (14 kategorier), sökning, kort
 │   ├── media.js               # 31 mediatyper med färg, fas, faroklass
 │   ├── pid-export.js          # Export till P&ID-format (SVG)
-│   └── sequences.js           # Uppstartssekvenser + guidade övningar
+│   └── sequences.js           # Uppstartssekvenser + guidade övningar + FURNACE_SCENARIOS
+├── TRAINING_MODULE.md         # Dokumentation: ugnsläromodulens design och status
 ├── process description/
 │   ├── Processbeskrivning av en bensinavsvavlingsanläggning.md
 │   └── Ugn-doc.md
@@ -79,7 +81,7 @@ process-builder-3d/
 
 ---
 
-## Komponentbibliotek (57 komponenter)
+## Komponentbibliotek (59 komponenter, 14 kategorier)
 
 ### Pumpar (5 st)
 | Nyckel | Namn |
@@ -202,6 +204,12 @@ Dessa saknar stack och har en `flue_gas_out`-port (auto: **Rökgas**) för koppl
 |--------|------|-------------|
 | `battery_limit_in` | Batterigräns Intag | Gul diamantmarkör – rör kommer IN från annan anläggning. Har `liquid_out`-port. Fyll i källanläggning + ledningsnummer i egenskapspanelen. |
 | `battery_limit_out` | Batterigräns Utlopp | Gul diamantmarkör – rör lämnar till annan anläggning. Har `liquid_in`-port. Fyll i målanläggning + ledningsnummer i egenskapspanelen. |
+
+### Läromoduler (2 st)
+| Nyckel | Namn | Beskrivning |
+|--------|------|-------------|
+| `furnace_training` | Processugn F-XXX1 | Interaktiv självdragsugn med 3 sektioner (A/B/C), 6 brännare/sektion. 52-stegs uppstartssekvens. Se TRAINING_MODULE.md. |
+| `v_xxx4_drum` | V-XXX4 Bränslegastrumma | Stående bränslegastrumma med nivåindikator, dräneringsventil och fackleledning. Används tillsammans med furnace_training. |
 
 ---
 
@@ -485,6 +493,68 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
   4. **Reglerventil tappar kontroll** (Medel) — automatisk reglerventil fastnar, manuell override
   5. **Överhettning** (Svår) — värmeväxlare överhettas, nödstopp, temp-justering, restart
 - **Knapp `🔧 Felsökning`** i toolbar öppnar fault-modal med tillgänglighets-check per scenario
+
+---
+
+### Session 12 – Läromodul: Ugnsuppstart (furnace_training + v_xxx4_drum)
+- **Ny kategori `Läromoduler`** (14:e i biblioteket) med 2 komponenter
+- **`furnace_training`** — Interaktiv processugn F-XXX1:
+  - 3 sektioner (A/B/C) med 6 brännare/sektion på undersidan (grå stålrör)
+  - Semi-transparent frontvägg (glasMaterial, opacity 0.18 — insyn i eldstaden)
+  - Per-sektion: PRIM_AIR, SEC_AIR (luftluckor), 6 KIKV-ventiler i 2 rader, pilot-tändsticka, hatch (lucka), BLEED-ventil
+  - Striplabels (sektion A/B/C) som small dark badges högst upp på varje sektions frontvägg
+  - Stodlhuvud (header pipe, 7.5 enheter bred) + sub-headers per sektion i gult
+  - Processtubbar nära taket i eldstaden (stålgrå cylindrar, visuella)
+  - `initialFurnaceState` med alla ventiler i stängd/stängt läge
+- **`v_xxx4_drum`** — Stående bränslegastrumma:
+  - Stående cylinder med halvkupar (topp/botten), 3 stödben
+  - Nivåindikator (klickbar band, `furnaceKey = 'V_XXX4_INSPECT'`)
+  - Dräneringsventil på frontfasaden (utanför trumväggen), kopplas till fackla via ledning
+  - Nozzle (koppling till ugnsrör) med korrekt z-position (lokal z=0)
+- **Ny click-handler:** Rekursiv `intersectObject(comp.mesh, true)` — söker alla descendants och returnerar närmaste med `userData.furnaceKey`
+- **`handleFurnaceElementClick(comp, key)`** — hanterar `furnace_interact` (sätter state) och `furnace_verify` (_verified-flagga)
+- **`updateFurnaceElementVisual(comp, key)`** — grön=closed/off, röd=open/on, orange=lit, blå=adjusted
+- **`startFurnaceScenario(key)`** — sparar canvas-state, kör `preload`, låser canvas med `scenarioLocked=true`, auto-frame kamera
+- **CCR-interaktion:** `#seq-ccr-action` + `#btn-ccr-confirm` för `furnace_ccr`-steg; sätter `furnaceState[ccrKey]=true`
+- **Timer-display:** `#seq-timer-display` räknar ned med setInterval för `furnace_timer`-steg
+- **`furnace_startup`** — 50 steg initialt (utökades till 52 i session 13), 4 faser
+- **`scenarioLocked`** — blockerar placeComponent / startMove / btn-delete under aktivt scenario
+
+### Session 13 – Buggfixar + förbättringar av ugnsläromodulen + Debugläge
+
+#### BLEED-ventil per sektion (BLEED_A / BLEED_B / BLEED_C)
+- **Förut:** Enda BLEED-ventil på huvudheader (gemensam för alla sektioner)
+- **Nu:** En BLEED per sektion, placerad i slutet av sub-headern (z=SUB_Z_BACK=-1.85) — teer av uppåt med vertikalt rör + flared cap
+- `initialFurnaceState`: `BLEED: 'closed'` → `BLEED_A: 'closed', BLEED_B: 'closed', BLEED_C: 'closed'`
+- `sequences.js`: FAS 3A-steg: `key: 'BLEED'` → `key: 'BLEED_A'`, instruktioner uppdaterade
+
+#### V-XXX4 z-axel-justering
+- **Rotsak:** Ugnsrörets world-z=2.1 men V-XXX4-preload hade z=0 och nozzeln lokal z=1.85
+- **Fix:** Preload z: 0 → 2.1 (matchar header-z); nozzel lokal z: 1.85 → 0 (lokal origo)
+
+#### V-XXX4 nivåindikator (steg 19) — ej klickbar
+- **Rotsak:** `levelBand`-meshens `userData.furnaceKey` saknades
+- **Fix:** `levelBand.userData.furnaceKey = 'V_XXX4_INSPECT'` (stor yta, 1.82 enhet hög)
+- **Buggfix:** `expectedState: true` → `expectedState: false` (inspektera = bekräfta att det är OK, inte ändra state)
+
+#### V-XXX4 dräneringsventil (steg 20-21) — ej klickbar (låg inuti trumman)
+- **Rotsak:** Initial design placerade ventilkroppen vid lokal z=0 (trummans centrum), blockerades av cylinders raycasting-shadow
+- **Fix:** Hela drain-assembly designades om på frontfasaden (+z): stub z=0.81, ventilkropp z=0.92 (0.22 utanför trumväggen R=0.70), facklerör till z=2.04 (lokal), flared cap
+- 2 nya sekvens-steg: öppna DRAIN_V_XXX4 → stäng DRAIN_V_XXX4 (52 steg totalt)
+
+#### Brännare ej klickbara (steg 23, BURNER_A1)
+- **Rotsak:** Brännarindikator-diskar (r=0.1) satt på övre frontfasad y=3.24/3.84 — osynliga underifrån
+- **Korrekt lösning:** Grå feed-pipes (de synliga rören underifrån) är de logiska "brännarna" användaren klickar på
+- **Fix:** `feed.userData.furnaceKey = \`BURNER_${sec}${b+1}\`` — varje feed-rör (18 totalt) fick klickbart furnaceKey
+- Steg 23 detailtext uppdaterad: "Klicka på det grå brännarröret (BURNER_A1)"
+
+#### Debugläge i sekvensmodulen (ny feature)
+- **`debugMode` boolean** i app-state (lokal variabel i DOMContentLoaded)
+- **🔧-knapp** i sekvens-panel header — togglar debugläge (orange highlight vid aktivt läge)
+- **`#seq-debug-bar`:** Steg-nummer-input + "Hoppa"-knapp + "Nästa →"-knapp
+- **`debugJumpToStep(targetIndex)`:** Rensar `furnaceTimerInterval` + `furnaceTimerStart` + `sequenceStepPassing`, sätter `sequenceStepIndex`, anropar `updateSequenceUI()`
+- **Input-sync:** `updateSequenceUI()` uppdaterar input.value till aktuellt steg om debugMode är aktiv
+- **CSS:** `.seq-debug-toggle`, `#seq-debug-bar`, `.seq-debug-input`, `.seq-debug-btn`, `.seq-debug-next`
 - **Felsökning-panel** återanvänder sekvens-UI (seq-panel) med titel `FELSÖKNING: ...`
 - **Orange pulsande glow** på felaktiga komponenter (`updateFaultVisuals` i animate-loop)
 - **Fault-indikator** i egenskapspanelen när faultad komponent är vald
@@ -494,6 +564,33 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
   - `valve_stuck` → `clearFault` sätter nu `comp.running = true` när opening > 0 (verify_flow fungerar)
   - `reset_emergency`-steg rensar alla fel i `showSequenceStepSuccess` + `advanceSequenceStep` (dubbelt skydd)
   - `overheat_scenario`: lade till toggle pump + toggle HX + verify_flow efter omstart
+
+#### Läromodul – Ugnsuppstart ✅ KLART (Session 12–13)
+- **`furnace_training`** – Interaktiv 3D-ugn (F-XXX1) med 3 sektioner (A/B/C), 6 brännare/sektion
+  - Semi-transparent frontvägg (glasMaterial, opacity 0.18) — insyn i eldstaden
+  - Per-sektion: luftluckor (PRIM_AIR, SEC_AIR), KIKV-ventiler (6 st), pilot, hatchar med brännare, bleed-ventil
+  - `userData.furnaceKey` på alla interaktiva sub-meshar
+  - `comp.furnaceState` — flat dict med ventillägen/flaggor (initial från `initialFurnaceState`)
+  - `handleFurnaceElementClick(comp, key)` — hanterar `furnace_interact` och `furnace_verify`
+  - `updateFurnaceElementVisual(comp, key)` — färg: grön=closed/off, röd=open/on, orange=lit, blå=adjusted
+- **`v_xxx4_drum`** – Stående bränslegastrumma med nivåindikator (klickbar), dräneringsventil (frontsida), fackleledning
+- **Rekursiv click-detection:** `raycaster.intersectObject(comp.mesh, true)` söker alla descendants — pålitligare än Map-baserat
+- **`furnace_startup`** (52 steg, 4 faser) — komplett uppstartssekvens i `FURNACE_SCENARIOS`
+  - Fas 1: Förberedelsearbete (ventilkontroll, tömning)
+  - Fas 2: Gasprov (bleed-ventiler per sektion, tändning av piloten, provtändning brännare)
+  - Fas 3: Uppvärmning (öppna KIKV, brännarjustering, temperaturkontroll)
+  - Fas 4: Driftläge (CCR-bekräftelse, avslutande steg)
+- **CCR-interaktion:** `#seq-ccr-action` + `#btn-ccr-confirm` — visar CCR-bekräftelseknappar för `furnace_ccr`-steg
+- **Timer-display:** `#seq-timer-display` räknar ned för `furnace_timer`-steg
+- **`scenarioLocked`:** Blockerar placering/flytt/radering under aktivt ugnsscenario
+- **Kamera-auto-frame:** `startFurnaceScenario()` zoomar kameran automatiskt till ugnen och V-XXX4
+
+#### Debugläge i sekvensmodulen ✅ KLART (Session 13)
+- **`debugMode` boolean** i app-state
+- **🔧-knapp** bredvid avbryt-knappen i sekvens-panelen — togglar debugläge
+- **Debug-bar** visas under panelhuvudet: steg-inmatning (input[number]), "Hoppa"-knapp, "Nästa →"-knapp
+- **`debugJumpToStep(targetIndex)`** — rensar timer-state, sätter `sequenceStepIndex`, anropar `updateSequenceUI()`
+- **Steg-input synkas** automatiskt när steg avanceras naturligt (om debugMode aktivt)
 
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)

@@ -1193,3 +1193,86 @@ body {
     border-top: 1px solid rgba(255,255,255,0.08);
     padding-top: 4px;
 }
+
+/* === Furnace/Ugnsmodul CCR-knapp och timer === */
+.seq-ccr-message {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+.seq-ccr-btn {
+    width: 100%;
+    padding: 8px 12px;
+    background: #1565c0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+}
+.seq-ccr-btn:hover { background: #1976d2; }
+
+.seq-timer-display {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffd54f;
+    text-align: center;
+    margin: 8px 0;
+}
+
+/* ── Debug mode controls ── */
+.seq-debug-toggle {
+    background: none;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 1px 5px;
+    line-height: 1.4;
+    transition: border-color 0.15s, color 0.15s;
+}
+.seq-debug-toggle:hover { border-color: #ffd54f; color: #ffd54f; }
+.seq-debug-toggle.active { border-color: #ffd54f; color: #ffd54f; background: rgba(255,213,79,0.10); }
+
+#seq-debug-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,213,79,0.07);
+    border: 1px solid rgba(255,213,79,0.25);
+    border-radius: 5px;
+    padding: 5px 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.seq-debug-label {
+    font-size: 11px;
+    color: #ffd54f;
+    white-space: nowrap;
+}
+.seq-debug-input {
+    width: 52px;
+    background: var(--bg-dark);
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 13px;
+    padding: 2px 5px;
+    text-align: center;
+}
+.seq-debug-btn {
+    background: var(--bg-card);
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+.seq-debug-btn:hover { border-color: #ffd54f; color: #ffd54f; }
+.seq-debug-next { margin-left: auto; }
+

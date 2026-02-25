@@ -22,7 +22,8 @@ const ComponentLibrary = (() => {
         'Instrument':        { icon: '◈', order: 10 },
         'Utilities':         { icon: '💧', order: 11 },
         'Anslutningar':      { icon: '⇌', order: 12 },
-        'Övrigt':            { icon: '…', order: 13 }
+        'Övrigt':            { icon: '…', order: 13 },
+        'Läromoduler':       { icon: '📚', order: 14 }
     };
 
     let activeTab = null;
