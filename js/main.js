@@ -2600,14 +2600,22 @@
     }
 
     // --- Running status visual ---
+    const VALVE_TYPES = new Set(['valve', 'gate', 'globe', 'check', 'control', 'psv', 'safety']);
     function updateRunningVisual(comp) {
         const isSelected = selectedComponents.includes(comp);
+        const isValve = VALVE_TYPES.has(comp.type);
         comp.mesh.traverse(child => {
             if (child.isMesh && !child.userData.isPortMarker) {
                 if (isSelected) {
                     child.material.emissive = new THREE.Color(0x333333);
+                    child.material.emissiveIntensity = 1;
                 } else if (comp.running) {
+                    // open/running → green glow
                     child.material.emissive = new THREE.Color(0x1b5e20);
+                    child.material.emissiveIntensity = 0.3;
+                } else if (isValve) {
+                    // valve closed → red glow
+                    child.material.emissive = new THREE.Color(0x5e1b1b);
                     child.material.emissiveIntensity = 0.3;
                 } else {
                     child.material.emissive = new THREE.Color(0x000000);
@@ -2947,11 +2955,11 @@
                 color = 0x2a2a2a;
             }
         } else if (state === 'closed' || state === 'off' || state === false) {
-            color = 0x4caf50; // grön = säker/stängd
+            color = 0xf44336; // röd = stängd/blockerad
         } else if (state === 'open' || state === 'on') {
-            color = 0xf44336; // röd = öppen/aktiv
+            color = 0x4caf50; // grön = öppen/flöde passerar
         } else if (state === true) {
-            color = 0xf44336;
+            color = 0x4caf50;
         } else if (state === 'lit') {
             color = 0xff9800; emissiveCol = 0xff9800; emissiveInt = 0.6;
         } else if (state === 'adjusted') {
@@ -3164,6 +3172,7 @@
     function highlightMesh(group, highlight) {
         // Find the comp to check running state
         const comp = placedComponents.find(c => c.mesh === group);
+        const isValve = comp && VALVE_TYPES.has(comp.type);
         group.traverse(child => {
             if (child.isMesh && !child.userData.isPortMarker) {
                 if (highlight) {
@@ -3171,6 +3180,10 @@
                     child.material.emissiveIntensity = 1;
                 } else if (comp && comp.running && simulationRunning) {
                     child.material.emissive = new THREE.Color(0x1b5e20);
+                    child.material.emissiveIntensity = 0.3;
+                } else if (isValve && simulationRunning) {
+                    // valve closed during simulation → red glow
+                    child.material.emissive = new THREE.Color(0x5e1b1b);
                     child.material.emissiveIntensity = 0.3;
                 } else {
                     child.material.emissive = new THREE.Color(0x000000);
@@ -4884,6 +4897,7 @@
         const timerDiv = document.getElementById('seq-timer-display');
         if (step.action.type === 'furnace_ccr') {
             document.getElementById('seq-ccr-message').textContent = step.action.ccrMessage || 'Bekräfta med CCR.';
+            document.getElementById('btn-ccr-confirm').textContent = step.action.buttonLabel || '📻 Bekräftat av CCR';
             ccrDiv.style.display = 'block';
         } else {
             ccrDiv.style.display = 'none';
@@ -5333,6 +5347,15 @@
         // Use restoreCanvas to place furnace + v_xxx4
         restoreCanvas(scenario.preload);
         restoringSnapshot = false;
+
+        // Apply initial visual states for all furnace elements
+        for (const comp of placedComponents) {
+            if (!comp.furnaceState) continue;
+            for (const key of Object.keys(comp.furnaceState)) {
+                updateFurnaceElementVisual(comp, key);
+            }
+        }
+
         scenarioLocked = true;
 
         // Auto-frame kameran mot ugnen
@@ -5367,6 +5390,13 @@
         const comp = findComponentByTypeIndex(step.action.componentType, 0);
         if (!comp) return;
         comp.furnaceState[step.action.ccrKey] = true;
+        // Apply any visual state changes declared on this CCR step
+        if (step.action.updatesState) {
+            for (const [stateKey, stateVal] of Object.entries(step.action.updatesState)) {
+                comp.furnaceState[stateKey] = stateVal;
+                updateFurnaceElementVisual(comp, stateKey);
+            }
+        }
         document.getElementById('seq-ccr-action').style.display = 'none';
         setStatus(`✓ CCR bekräftat: ${step.action.ccrKey}`);
     });

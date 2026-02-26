@@ -5165,7 +5165,7 @@ const COMPONENT_DEFINITIONS = {
             const convMat       = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.8 });
             const stackMat      = new THREE.MeshStandardMaterial({ color: 0x424242 });
             const divMat        = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
-            const tsoMat        = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
+            const tsoMat        = new THREE.MeshStandardMaterial({ color: 0x78909c }); // neutral — overridden by updateFurnaceElementVisual
             const stemMat       = new THREE.MeshStandardMaterial({ color: 0xbdbdbd });
             const kikvMat       = new THREE.MeshStandardMaterial({ color: 0x90a4ae });
             const burnerIndMat  = new THREE.MeshStandardMaterial({ color: 0x455a64 });
@@ -5228,11 +5228,99 @@ const COMPONENT_DEFINITIONS = {
                 group.add(div);
             }
 
-            // ── FLUE_DAMPER ────────────────────────────────────────────────
-            const flue = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.07, 12), damperMat);
-            flue.position.set(0, LIFT + FH + 0.035, 0);
-            flue.userData.furnaceKey = 'FLUE_DAMPER';
-            group.add(flue);
+            // ── FLUE_DAMPER assembly on chimney ───────────────────────────
+            // Damper in chimney bore; counterweight arm on right side of chimney.
+            // Wire routes RIGHTWARD (+x, above convection roof) then drops straight
+            // down outside the furnace RIGHT face (same side as STEAM nozzle).
+            // "Fail to open": counterweight holds damper open if wire is released.
+            const STACK_BOT  = LIFT + FH + CONVH;  // 6.4  — chimney bottom (world y)
+            const DAMPER_Y   = STACK_BOT + 0.85;   // 7.25 — lower quarter of chimney
+            const CW_X       = 0.83;               // right side, just outside chimney (r≈0.52)
+            const CW_RIGHT_X = FW / 2 + 0.5;       // 4.25 — outside furnace right face (FW/2=3.75)
+
+            // Spjällskiva (disc inside chimney bore, slightly tilted = "closed" indicator)
+            const damperDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.07, 14), damperMat);
+            damperDisc.position.set(0, DAMPER_Y, 0);
+            damperDisc.rotation.z = Math.PI * 0.08; // ~15° tilt — partially closed indication
+            damperDisc.userData.furnaceKey = 'FLUE_DAMPER';
+            group.add(damperDisc);
+
+            // Axel (protrudes both sides through chimney wall, horizontal along X)
+            const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.5, 6), steelMat);
+            axle.rotation.z = Math.PI / 2;
+            axle.position.set(0, DAMPER_Y, 0);
+            group.add(axle); // visual only
+
+            // Motviktsarm (extends upward from axle right end, outside chimney)
+            const cwArm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.72, 0.05), steelMat);
+            cwArm.position.set(CW_X, DAMPER_Y + 0.30, 0);
+            cwArm.userData.furnaceKey = 'FLUE_DAMPER';
+            group.add(cwArm);
+
+            // Motviktsblock (heavy counterweight at top of arm — dark grey)
+            const cwBlock = new THREE.Mesh(
+                new THREE.BoxGeometry(0.26, 0.18, 0.14),
+                new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.85 })
+            );
+            cwBlock.position.set(CW_X, DAMPER_Y + 0.72, 0);
+            cwBlock.userData.furnaceKey = 'FLUE_DAMPER';
+            group.add(cwBlock);
+
+            // Spänntråd – horisontell sektion: från armen RÄTTUT (+x) till ugnens högra sida.
+            // Löper i fri luft ovanför konvektionssektionens tak (y=6.4 < DAMPER_Y=7.25).
+            const wireHLen  = CW_RIGHT_X - CW_X;   // 3.42 enheter åt höger
+            const wireHMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.010, 0.010, wireHLen, 4),
+                steelMat
+            );
+            wireHMesh.rotation.z = Math.PI / 2; // horisontell längs X
+            wireHMesh.position.set((CW_X + CW_RIGHT_X) / 2, DAMPER_Y, 0);
+            group.add(wireHMesh); // visual only
+
+            // Styrrulle (guide sheave) vid hörnet där tråden byter riktning horisontell → vertikal
+            const sheave = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 8), steelMat);
+            sheave.rotation.x = Math.PI / 2; // axel längs Z
+            sheave.position.set(CW_RIGHT_X, DAMPER_Y, 0);
+            group.add(sheave); // visual only
+
+            // Spänntråd – vertikal sektion: löper rakt NER utanför ugnens högra sida till vinschen
+            const WINCH_Y  = 0.32;
+            const wireVLen = DAMPER_Y - WINCH_Y;
+            const wireVMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.010, 0.010, wireVLen, 4),
+                steelMat
+            );
+            wireVMesh.position.set(CW_RIGHT_X, (DAMPER_Y + WINCH_Y) / 2, 0);
+            group.add(wireVMesh); // visual only
+
+            // Handvinsch / Spjälltrumma — utanför ugnen på HÖGRA sidan (STEAM-sidan)
+            // Monteringsstolpe
+            const winchPost = new THREE.Mesh(new THREE.BoxGeometry(0.07, WINCH_Y * 2, 0.07), steelMat);
+            winchPost.position.set(CW_RIGHT_X, WINCH_Y, 0);
+            group.add(winchPost);
+
+            // Trumma (horisontell cylinder, axel längs Z — operatören vevar framifrån)
+            const winchDrum = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.09, 0.09, 0.24, 10),
+                new THREE.MeshStandardMaterial({ color: 0x546e7a })
+            );
+            winchDrum.rotation.x = Math.PI / 2; // axel längs Z
+            winchDrum.position.set(CW_RIGHT_X, WINCH_Y, 0);
+            winchDrum.userData.furnaceKey = 'FLUE_DAMPER';
+            group.add(winchDrum);
+
+            // Vevarm (sticker ut framåt +z från trumman — operatören vevar framifrån)
+            const crankArm = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.18, 5), steelMat);
+            crankArm.rotation.x = Math.PI / 2; // längs Z
+            crankArm.position.set(CW_RIGHT_X, WINCH_Y + 0.09, 0.18);
+            crankArm.userData.furnaceKey = 'FLUE_DAMPER';
+            group.add(crankArm);
+
+            // T-handtag (vertikalt grepp i änden av vevens arm)
+            const crankT = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.15, 5), steelMat);
+            crankT.position.set(CW_RIGHT_X, WINCH_Y + 0.09, 0.27);
+            crankT.userData.furnaceKey = 'FLUE_DAMPER';
+            group.add(crankT);
 
             // ── STEAM nozzle (right face) ──────────────────────────────────
             const steam = new THREE.Mesh(
@@ -5297,8 +5385,8 @@ const COMPONENT_DEFINITIONS = {
                 const lSprite = new THREE.Sprite(
                     new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(lc) })
                 );
-                lSprite.position.set(xOff, LIFT + FH + 0.18, FD/2 + 0.02);
-                lSprite.scale.set(0.45, 0.22, 1.0);
+                lSprite.position.set(xOff, LIFT + FH + 0.18, FD/2 + 0.65);
+                lSprite.scale.set(0.55, 0.28, 1.0);
                 group.add(lSprite);
 
                 // ── Process radiant tubes near ceiling (purely visual) ─────
@@ -5322,9 +5410,9 @@ const COMPONENT_DEFINITIONS = {
                 }
 
                 // ── Underside air register boxes — one PRIM+SEC package BESIDE each burner ──
-                // Box sits at x = xOff + AIR_DX (to the right of the feed pipe)
+                // Box sits at x = xOff + AIR_DX (moved to the RIGHT to clear the burner/pilot area)
                 // Two stacked boxes: SEC_AIR (upper) + PRIM_AIR (lower), divided by a plate
-                const AIR_DX    = 0.30;  // x-offset from burner feed pipe centre
+                const AIR_DX    = 0.90;  // x-offset from burner feed pipe centre (moved right)
                 const regFrMat  = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.8 });
                 const BOX_W     = 0.18;  // width in x
                 const BOX_D     = 0.13;  // depth in z
@@ -5376,14 +5464,94 @@ const COMPONENT_DEFINITIONS = {
                     group.add(primLouver);
                 }
 
-                // ── PILOT nozzle (y = LIFT+0.54, left of centre) ──────────
-                const pilot = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.055, 0.055, 0.22, 8), pilotMat.clone()
+                // ── PILOT — Fristående portabel tändbrännare (gasoltube + sond) ──────
+                // Monteras bredvid brännare 1 (z = BZ[0] = -1.5).
+                // Piloten är en separat portabel enhet — inte en del av ugnskonstruktionen.
+                // PILOT_X offset -0.15 från xOff så sonden INTE går igenom subheadern (vid x=xOff).
+                // Klickbara delar: sond-spetsen, kopplingen och gasoltubens ventil.
+                const PILOT_Z    = BZ[0];           // centrerat med brännare 1 — sonden går inuti ringmuren
+                const PILOT_X    = xOff - 0.08;    // 0.08 från sub-header (r=0.05+rod r=0.012=0.062 → OK), inuti ring (r<RING_INNER 0.10)
+                const BOTTLE_X   = xOff - 0.45;    // gasoltub längre åt vänster, tydligt åtskild
+                const gasBotMat  = new THREE.MeshStandardMaterial({ color: 0xe64a19, roughness: 0.5 }); // orange-röd gasoltub
+                const gasValvMat = new THREE.MeshStandardMaterial({ color: 0xffd54f }); // mässing-gul ventil
+
+                // Sondens infällningsrör — startar OVANFÖR subheadern (y > SUB_Y=1.0) upp till eldstadsgolvet.
+                // Ingen stav nedanför kopplingslådan.
+                const ROD_BOT = SUB_Y + 0.12;     // 1.12 — precis ovanför subheaderns överkant
+                const ROD_LEN = LIFT - ROD_BOT;   // 0.88
+                const pilotRod = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.012, 0.012, ROD_LEN, 6), pilotMat.clone()
                 );
-                pilot.rotation.x = Math.PI / 2;
-                pilot.position.set(xOff - 0.80, LIFT + 0.54, FD/2 + 0.11);
-                pilot.userData.furnaceKey = `PILOT_${sec}`;
-                group.add(pilot);
+                pilotRod.position.set(PILOT_X, ROD_BOT + ROD_LEN / 2, PILOT_Z);
+                group.add(pilotRod); // visuell — ingen furnaceKey
+
+                // Tändhuvud/flamspets vid sondtoppen (orange kon = pilotlåga)
+                const igHead = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.028, 0.10, 8),
+                    new THREE.MeshStandardMaterial({ color: 0xff9800 })
+                );
+                igHead.position.set(PILOT_X, LIFT - 0.02, PILOT_Z);
+                igHead.userData.furnaceKey = `PILOT_${sec}`;
+                group.add(igHead);
+
+                // Gaskoppling (lådan vid sondstaven, i nivå med gasoltubens ventil)
+                const COUPLING_Y = 0.42;  // matchar toppen av gasventilen (y=0.39+0.03)
+                const gasCoupling = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.10, 0.07, 0.10), gasBotMat
+                );
+                gasCoupling.position.set(PILOT_X, COUPLING_Y, PILOT_Z);
+                gasCoupling.userData.furnaceKey = `PILOT_${sec}`;
+                group.add(gasCoupling);
+
+                // Gasslang (horisontell från kopplingslådan till gasoltubens ventil — samma y)
+                const HOSE_LEN = Math.abs(PILOT_X - BOTTLE_X);  // 0.30
+                const hose = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.009, 0.009, HOSE_LEN, 4), pilotMat.clone()
+                );
+                hose.rotation.z = Math.PI / 2;
+                hose.position.set((PILOT_X + BOTTLE_X) / 2, COUPLING_Y, PILOT_Z);
+                group.add(hose); // visuell
+
+                // Vertikalt kopplingrör: fyller gapet från kopplingslådan (COUPLING_Y) upp till sondstaven (ROD_BOT)
+                const connLen = ROD_BOT - COUPLING_Y;   // 1.12 - 0.42 = 0.70
+                const connector = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.010, 0.010, connLen, 6), pilotMat.clone()
+                );
+                connector.position.set(PILOT_X, COUPLING_Y + connLen / 2, PILOT_Z);
+                group.add(connector); // visuell
+
+                // Gasoltub (stående orange-röd cylinder på golvet)
+                const gasBot = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.065, 0.065, 0.30, 10), gasBotMat
+                );
+                gasBot.position.set(BOTTLE_X, 0.18, PILOT_Z);
+                gasBot.userData.furnaceKey = `PILOT_${sec}`;
+                group.add(gasBot);
+
+                // Gasoltubens toppdel (halvsfär) — avrundad topp
+                const botTop = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.065, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+                    gasBotMat
+                );
+                botTop.position.set(BOTTLE_X, 0.33, PILOT_Z);
+                group.add(botTop); // visuell
+
+                // Gasventil (mässingsgul, sitter på toppen av tuben — klickbar)
+                const gasValve = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.025, 0.050, 0.06, 8), gasValvMat
+                );
+                gasValve.position.set(BOTTLE_X, 0.39, PILOT_Z);
+                gasValve.userData.furnaceKey = `PILOT_${sec}`;
+                group.add(gasValve);
+
+                // Handtag på gasventilen (T-formad vridknopp)
+                const valveHandle = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.010, 0.010, 0.14, 5), gasValvMat
+                );
+                valveHandle.rotation.z = Math.PI / 2;
+                valveHandle.position.set(BOTTLE_X, 0.39, PILOT_Z);
+                valveHandle.userData.furnaceKey = `PILOT_${sec}`;
+                group.add(valveHandle);
 
                 // ── KIKV valves on front face (2 rows × 3 cols = 6/section) ─
                 // Row 1 at y=LIFT+0.62 (KIKV_X1..X3), row 2 at y=LIFT+0.80 (KIKV_X4..X6)
@@ -5417,6 +5585,23 @@ const COMPONENT_DEFINITIONS = {
                         kHandle.position.set(kx, ky, FD/2 + 0.15);
                         kHandle.userData.furnaceKey = fKey;
                         group.add(kHandle);
+
+                        // ── KIKV label sprite ──────────────────────────────────
+                        const klc = document.createElement('canvas');
+                        klc.width = 64; klc.height = 32;
+                        const klctx = klc.getContext('2d');
+                        klctx.fillStyle = 'rgba(20,20,20,0.82)';
+                        klctx.fillRect(0, 0, 64, 32);
+                        klctx.fillStyle = '#ffffff';
+                        klctx.font = 'bold 20px Arial';
+                        klctx.textAlign = 'center'; klctx.textBaseline = 'middle';
+                        klctx.fillText(`${sec}${idxStart + col}`, 32, 16);
+                        const klSprite = new THREE.Sprite(
+                            new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(klc) })
+                        );
+                        klSprite.position.set(kx, ky + 0.12, FD/2 + 0.15);
+                        klSprite.scale.set(0.20, 0.10, 1.0);
+                        group.add(klSprite);
                     });
                 });
 
@@ -5601,6 +5786,31 @@ const COMPONENT_DEFINITIONS = {
                     arrowGroup.position.set(bx, BRANCH_MID, HDR_Z + 0.46);
                     group.add(arrowGroup);
                 });
+
+                // ── Burner floor walls — cirkulär eldfast ring runt varje brännaröppning ──
+                // Cylindrisk vägg (öppen) + annulär topplatta bildar en rund mur på eldstadsgolvet.
+                // RING_INNER = 0.10 ger plats för feedröret (r=0.028) OCH pilotsonden (offset 0.08 < 0.10).
+                const RING_OUTER  = 0.15;
+                const RING_INNER  = 0.10;
+                const RING_H      = 0.10;
+                const refracMat   = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.9, side: THREE.DoubleSide });
+                const refracCapMat= new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
+                for (let b = 0; b < 6; b++) {
+                    const bz = BZ[b];
+                    // Cylindrisk ytterväggsyta (open-ended)
+                    const ring = new THREE.Mesh(
+                        new THREE.CylinderGeometry(RING_OUTER, RING_OUTER, RING_H, 16, 1, true), refracMat
+                    );
+                    ring.position.set(xOff, LIFT + RING_H / 2, bz);
+                    group.add(ring);
+                    // Annulär topplatta (RingGeometry i horisontellt läge)
+                    const cap = new THREE.Mesh(
+                        new THREE.RingGeometry(RING_INNER, RING_OUTER, 16), refracCapMat
+                    );
+                    cap.rotation.x = -Math.PI / 2;
+                    cap.position.set(xOff, LIFT + RING_H, bz);
+                    group.add(cap);
+                }
 
                 // Feed pipes (6 per section) — each is the clickable "burner" element
                 // furnaceKey = BURNER_secN so user can click the visible feed pipe directly

@@ -137,45 +137,51 @@ cancelSequence()  →  rensar furnaceTimer, återställer canvas, scenarioLocked
 
 ### Visuell feedback-tabell
 
+Industristandard: grön = flöde passerar, röd = blockerat.
+
 | Tillstånd | Färg |
 |-----------|------|
-| `'closed'` / `'off'` / `false` | Grön (0x22cc44) |
-| `'open'` / `'on'` / `true` | Röd (0xff3322) |
-| `'lit'` | Orange (0xff8800) |
-| `'adjusted'` | Blå (0x3399ff) |
+| `'closed'` / `'off'` / `false` | Röd (0xf44336) — stängd/blockerad |
+| `'open'` / `'on'` / `true` | Grön (0x4caf50) — öppen/flöde |
+| `'lit'` | Orange (0xff9800) — tänd pilot/brännare |
+| `'adjusted'` | Blå (0x29b6f6) — justerad driftinställning |
+
+**Obs:** Initialtillstånd appliceras visuellt vid scenariostart (`startFurnaceScenario` loopar `furnaceState` och anropar `updateFurnaceElementVisual` för alla nycklar).
 
 ---
 
-## Sekvensstruktur — `furnace_startup` (52 steg)
+## Sekvensstruktur — `furnace_startup` (26 steg, sektion A)
 
-### Fas 1: Förberedelse och kontroll (steg 1–10)
-Verifiering av att alla ventiler är i rätt läge inför uppstart.
-- Kontroll av V-XXX4 (nivåindikator, tömning)
-- Verifiering att PRIM_AIR och SEC_AIR är stängda
-- Verifiering att alla KIKV och HATCH är stängda
-- Öppna bränngastillförseln
+Sekvensen täcker tändning av sektion A. Sektionerna B och C följer samma procedur men ingår ej i standardmodulen — fokus läggs på att lära ut principen en gång, grundligt.
 
-### Fas 2: Gasprov och tändning (steg 11–28)
-Den kritiska fasen — proven gas, tändning av pilot och provtändning av brännare.
-- Öppna BLEED_A/B/C (tömning av eventuellt kondensat)
-- Stäng BLEED
-- Öppna HATCH per sektion
-- Tänd pilot (PILOT_A/B/C)
-- Klicka BURNER_A1/A2... (provtändning)
-- Stäng HATCH
+Kundspecifika processvärden (urångningstid, trycksättningstryck, driftdrag) definieras i `FURNACE_CONFIG` i sequences.js och refereras inte som hårdkodade siffror i stegtexterna.
 
-### Fas 3: Uppvärmning (steg 29–44)
-Gradvis öppning av brännare och luftreglering.
-- Öppna KIKV per sektion (3+3 i varje)
-- Justera PRIM_AIR och SEC_AIR
-- CCR-bekräftelse (kontrollrum informeras)
-- Timer-steg: vänta på temperaturstegring
+### Fas 1: Förberedelse och kontroll (steg 1–3)
+- Verifiera TSO_AA stängd
+- Verifiera TSO_AB stängd
+- Verifiera KIKV_A1 (alla kikventiler sektion A stängda)
 
-### Fas 4: Driftläge (steg 45–52)
-Avslutande moment, överlämning till driftläge.
-- Sista temperaturverifiering
-- CCR-bekräftelse att ugnen är i stabil drift
-- Statusuppdatering
+### Fas 2: Vädring / ångurångning (steg 4–13)
+- Öppna FLUE_DAMPER (rökgasspjäll via handvinsch)
+- Öppna PRIM_AIR_A och SEC_AIR_A (luftregister sektion A)
+- Öppna STEAM (ångurångning startar)
+- Meddela CCR — logga starttid
+- Kontrollera V-XXX4 (nivåindikator)
+- Öppna / stäng DRAIN_V_XXX4 (dränering till fackla)
+- Bekräfta urångning klar (knapp "✓ Urångning klar" — tid per driftinstruktion)
+- Gasprov vid BURNER_A1
+
+### Fas 3: Tändning sektion A (steg 14–24)
+- CCR bekräftar manuell bränsleblockering
+- Öppna BLEED_A (lufta bränslegas)
+- Tänd PILOT_A (portabel tändbrännare inuti brännarmuren vid brännare 1)
+- CCR öppnar TSO_AA → pil roterar nedåt, ventil visas grön
+- Öppna KIKV_A1 → A3 (3 brännare — stäng BLEED_A)
+- Öppna KIKV_A4 → A6 (alla 6 brännare aktiva)
+
+### Fas 4: Normal drift (steg 25–26)
+- Justera PRIM_AIR_A (driftläge, visas blå)
+- Finjustera FLUE_DAMPER (driftläge, visas blå)
 
 ---
 
@@ -209,7 +215,7 @@ Kameran frames automatiskt för att visa hela ugnen och V-XXX4.
 
 ### Kända begränsningar
 - Brännarna (BURNER_X1..X6) har enkel färgfeedback — ingen flamanimation
-- Sekvensen är låst till sektionsordning A→B→C (ej konfigurerbar)
+- Sekvensen täcker endast sektion A — B och C kräver egen modul om önskat
 - Inga rörlednings-kopplingar valideras under scenariot (bara komponentklick)
 - Debugläge blockerar inte Prov-Läge — instruktör behöver manuellt säkerställa att debugläge är av under examination
 

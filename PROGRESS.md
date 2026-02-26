@@ -592,6 +592,49 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - **`debugJumpToStep(targetIndex)`** — rensar timer-state, sätter `sequenceStepIndex`, anropar `updateSequenceUI()`
 - **Steg-input synkas** automatiskt när steg avanceras naturligt (om debugMode aktivt)
 
+### Session 14 – Ugnsläromodul: visuella förbättringar + sekvensförenkling
+
+#### Färgkonvention för ventiler — industristandard (hela projektet)
+- **Ny standard:** grön = öppen (flöde passerar), röd = stängd (blockerad)
+- `updateFurnaceElementVisual`: bytte `closed/off/false` → röd (0xf44336), `open/on/true` → grön (0x4caf50)
+- `updateRunningVisual`: ny `VALVE_TYPES`-konstant (valve, gate, globe, check, control, psv, safety) — ventiler får röd glow vid stängt läge under simulering
+- `highlightMesh`: ventiler återfår röd glow vid avmarkering (om simulering aktiv)
+- `tsoMat` i components.js: 0x4caf50 (grön) → 0x78909c (neutral grå, färg sätts av updateFurnaceElementVisual)
+
+#### TSO-pilar och initialtillstånd
+- `sequences.js`: lade till `updatesState: { TSO_AA/BA/CA: 'open' }` på CCR-trycksättningssteg → TSO-ventilens pil roterar nedåt vid bekräftelse
+- `main.js`: CCR-handler tillämpar nu `updatesState`-fältet och anropar `updateFurnaceElementVisual`
+- `startFurnaceScenario()`: anropar `updateFurnaceElementVisual` för alla initialtillstånd direkt efter `restoreCanvas` — alla ventiler visas korrekt (röda) vid scenariostart
+
+#### Sekvens kapas till sektion A (26 steg, var ~50)
+- Borttaget: verifiering av B/C TSO + KIKV (6 steg), luftregister B/C (4 steg), hel sektion B (8 steg), hel sektion C (8 steg)
+- FAS 3A/3B slogs ihop till FAS 3 — enhetlig namngivning genom hela sektion A
+- Scenario-namn: "Uppstart ugn F-XXX1 — Sektion A"
+
+#### FURNACE_CONFIG — generisering av kundspecifika värden
+- Nytt `FURNACE_CONFIG`-objekt (före FURNACE_SCENARIOS): `purgeDurationSec`, `ignitePressure`, `operatingDraft`
+- Specifika värden (30 s, 0,4 bar, −2 mmH₂O) borttagna från instruktionstexter → "se driftinstruktion"
+- Timer-steg (steg 12) → `furnace_ccr` med `buttonLabel: '✓ Urångning klar'` — nedräkning ersatt med bekräftelseknapp
+- CCR-knappens text är nu dynamisk: `step.action.buttonLabel || '📻 Bekräftat av CCR'`
+
+#### KIKV-etiketter (etikettskyltar)
+- Sprite-etikett (A1–A6, B1–B6, C1–C6) ovanför varje KIKV-ventil
+- Canvas 64×32, mörk bakgrund, vit bold text, skala 0.20×0.10
+- Position: y = ky+0.12, z = FD/2+0.15 (i nivå med T-handtaget)
+
+#### Brännarmur — cirkulär eldfast ring
+- Ersatt 4 boxar/sektion med cylindrisk ring (CylinderGeometry openEnded + DoubleSide) + annulär topplatta (RingGeometry)
+- RING_OUTER=0.15, RING_INNER=0.10, RING_H=0.10 (eldfast brunt 0x6d4c41)
+- 2 meshar/brännare × 18 brännare = 36 meshar (vs 72 med boxarna)
+
+#### Pilotens position justerad
+- `PILOT_Z`: BZ[0]−0.14 → BZ[0] — sonden centrerad med brännare 1
+- `PILOT_X`: xOff−0.15 → xOff−0.08 — sonden sitter inuti ringmuren (0.08 < RING_INNER 0.10), klarar sub-header (0.08 > r=0.062)
+
+#### Sektionsetiketter A/B/C
+- Sprite-position: FD/2+0.02 → FD/2+0.65 (tydligt framför frontväggen)
+- Skala: 0.45×0.22 → 0.55×0.28
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil
