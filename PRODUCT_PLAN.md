@@ -1,6 +1,6 @@
 # Process Builder 3D – Produktplan och Kommersialiseringsstrategi
 
-> Senast uppdaterad: 2026-02-23
+> Senast uppdaterad: 2026-02-28
 
 ---
 
@@ -138,18 +138,18 @@ processbuilder3d-docker-v1.2.tar       ← Docker-image, driftsätt med en rad:
 
 Nuläge är en funktionell prototyp. Nedan beskrivs vad som behöver adderas för en säljbar v1.0.
 
-### Fas A – Kärnfunktioner (pågår)
-- [x] 52 komponenter med 3D-modeller
+### Fas A – Kärnfunktioner (klart)
+- [x] 59 komponenter med 3D-modeller (14 kategorier)
 - [x] 31 mediatyper + automatiskt mediaval
 - [x] Kopplingslogik + P&ID-export
-- [ ] **Spara/ladda processer** (Steg 1 – pågår nu)
-- [ ] Komponentetiketter i 3D (taggnummer)
-- [ ] Mediakompabilitetskontroll
+- [x] Spara/ladda processer (namngivna slots + JSON export/import)
+- [x] Komponentetiketter i 3D (taggnummer)
+- [x] Mediakompabilitetskontroll (röd/orange feedback + egenskapspanel)
 
-### Fas B – Utbildningsfunktioner
-- [ ] Guidade övningar / scenarion (fördefinierade uppgifter)
-- [ ] Enkel flödessimulering (animerade pilar, on/off)
-- [ ] Uppstartssekvenser steg-för-steg
+### Fas B – Utbildningsfunktioner (klart)
+- [x] Guidade övningar / scenarion (3 byggövningar + 5 felsökningsscenarier + Prov-Läge)
+- [x] Enkel flödessimulering (animerade pilar längs rör, on/off per komponent)
+- [x] Uppstartssekvenser steg-för-steg (ugnsläromodul: 26-stegs interaktiv uppstart, CCR-bekräftelser, timer)
 
 ### Fas C – Produktifiering
 - [ ] Electron-wrapper (Variant A – lokal app)
