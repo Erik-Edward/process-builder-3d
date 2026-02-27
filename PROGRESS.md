@@ -635,6 +635,39 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - Sprite-position: FD/2+0.02 → FD/2+0.65 (tydligt framför frontväggen)
 - Skala: 0.45×0.22 → 0.55×0.28
 
+### Session 15 – Förbättrad waypoint-placering vid rörbyggande
+
+#### Alignment-guider med differentierade färger
+- `PIPE_ALIGN_TOLERANCE`: 0.05 → 0.30 (guider syns nu vid normalt arbete)
+- Ny `PIPE_SNAP_THRESHOLD = 0.25` — cursor snappas automatiskt till alignerade axlar
+- **Blå guider:** cursor X eller Z alignar med *senaste waypoint* (föregående ankarpunkt)
+- **Cyan guider:** cursor X eller Z alignar med *målporten*
+- **Grön höjdguide:** `currentHeight` matchar målportens Y — signalerar "du är på rätt höjd"
+- Blå har prioritet om båda axlarna matchar samma mål
+- `createPipeAlignGuides()`: reskriven, skapar nu 5 linjer: `lineX_wp`, `lineZ_wp`, `lineX_tgt`, `lineZ_tgt`, `lineY`
+- `destroyPipeAlignGuides()` och `hidePipeAlignGuides()` uppdaterade för 5 nycklar
+- Ny `applyAlignSnap(x, z, wpPos, tgtPos)`: returnerar `{x, z}` snappat till närmaste alignment-axel
+
+#### Två-segments live preview
+- Ny `previewLineTgt` (grå-blå, 35% opacity) i `pipeDrawingState`: visar sträckan *cursor → målport*
+- Den befintliga `previewLine` visar fortfarande *senaste ankarpunkt → cursor*
+- Hela planerade rutten (stub → waypoints → cursor → mål) syns i realtid
+- `previewLineTgt` städas upp i `cleanupPipeDrawing()`
+- Alla tre startfunktioner (`startPipeDrawing`, `startBranchPipeDrawing`, `startPipeToTeeDrawing`) skapar `previewLineTgt`
+
+#### Shift = höjdlås
+- `updatePipePreview()` och `getDrawingPlanePoint()`: om `mouseEvent.shiftKey` → låser drawing-planet till senaste ankarpunktens Y
+- Placerade waypoints hamnar då exakt i samma höjdplan som föregående punkt
+- Status-raden visar: `... | Shift = höjdlås | ...`
+
+#### Dashed segment-linjer + pilindikationer mellan placerade waypoints
+- `addPipeWaypoint()`: beräknar `prevAnchor` *innan* waypoint-stacken uppdateras
+- Skapar dashed cyan linje (dashSize 0.18, gapSize 0.09, opacity 0.80) från prevAnchor → ny punkt
+- Skapar liten konpil (`ConeGeometry(0.07, 0.18, 8)`) vid 70% av segmentet, roterad i flödesriktningen med `quaternion.setFromUnitVectors(+Y, segDir)`
+- Segment+pil lagras i `pipeDrawingState.waypointSegments[]`
+- `undoLastWaypoint()`: tar bort senaste segment och pil
+- `cleanupPipeDrawing()`: tar bort alla segment och pilar
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil

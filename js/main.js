@@ -2043,55 +2043,41 @@
     }
 
     // --- Pipe drawing alignment guides ---
-    const PIPE_ALIGN_COLOR = 0x4fc3f7;
-    const PIPE_ALIGN_COLOR_HEIGHT = 0xffab40; // orange for height match
-    const PIPE_ALIGN_TOLERANCE = 0.05;
+    const PIPE_ALIGN_COLOR_WP   = 0x42a5f5;  // blue  — aligns with last waypoint
+    const PIPE_ALIGN_COLOR_TGT  = 0x26c6da;  // cyan  — aligns with target port
+    const PIPE_ALIGN_COLOR_HTGT = 0x66bb6a;  // green — height matches target port
+    const PIPE_ALIGN_TOLERANCE  = 0.30;      // guide appears within this distance
+    const PIPE_SNAP_THRESHOLD   = 0.25;      // cursor snaps to axis within this distance
 
     function createPipeAlignGuides() {
-        // X-alignment line (horizontal, along X axis — shown when Z matches)
-        const matX = new THREE.LineDashedMaterial({
-            color: PIPE_ALIGN_COLOR, dashSize: 0.25, gapSize: 0.12,
-            transparent: true, opacity: 0.5
-        });
-        const geoX = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(-10, 0, 0), new THREE.Vector3(10, 0, 0)
-        ]);
-        const lineX = new THREE.Line(geoX, matX);
-        lineX.computeLineDistances();
-        lineX.visible = false;
-        scene.add(lineX);
-
-        // Z-alignment line (horizontal, along Z axis — shown when X matches)
-        const matZ = new THREE.LineDashedMaterial({
-            color: PIPE_ALIGN_COLOR, dashSize: 0.25, gapSize: 0.12,
-            transparent: true, opacity: 0.5
-        });
-        const geoZ = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(0, 0, -10), new THREE.Vector3(0, 0, 10)
-        ]);
-        const lineZ = new THREE.Line(geoZ, matZ);
-        lineZ.computeLineDistances();
-        lineZ.visible = false;
-        scene.add(lineZ);
-
-        // Y-alignment indicator (horizontal ring at matched height — orange)
-        const matY = new THREE.LineDashedMaterial({
-            color: PIPE_ALIGN_COLOR_HEIGHT, dashSize: 0.2, gapSize: 0.1,
-            transparent: true, opacity: 0.6
-        });
-        const geoY = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(-10, 0, 0), new THREE.Vector3(10, 0, 0)
-        ]);
-        const lineY = new THREE.Line(geoY, matY);
-        lineY.computeLineDistances();
-        lineY.visible = false;
-        scene.add(lineY);
-
-        return { lineX, lineZ, lineY };
+        function makeLine(color) {
+            const mat = new THREE.LineDashedMaterial({
+                color, dashSize: 0.25, gapSize: 0.12,
+                transparent: true, opacity: 0.55
+            });
+            const geo = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-10, 0, 0), new THREE.Vector3(10, 0, 0)
+            ]);
+            const line = new THREE.Line(geo, mat);
+            line.computeLineDistances();
+            line.visible = false;
+            scene.add(line);
+            return line;
+        }
+        // lineX_wp/tgt: runs along X (shown when cursor Z aligns with waypoint/target)
+        // lineZ_wp/tgt: runs along Z (shown when cursor X aligns with waypoint/target)
+        // lineY: green height guide when currentHeight matches target port Y
+        return {
+            lineX_wp:  makeLine(PIPE_ALIGN_COLOR_WP),
+            lineZ_wp:  makeLine(PIPE_ALIGN_COLOR_WP),
+            lineX_tgt: makeLine(PIPE_ALIGN_COLOR_TGT),
+            lineZ_tgt: makeLine(PIPE_ALIGN_COLOR_TGT),
+            lineY:     makeLine(PIPE_ALIGN_COLOR_HTGT)
+        };
     }
 
     function destroyPipeAlignGuides(guides) {
-        for (const key of ['lineX', 'lineZ', 'lineY']) {
+        for (const key of ['lineX_wp', 'lineZ_wp', 'lineX_tgt', 'lineZ_tgt', 'lineY']) {
             const obj = guides[key];
             if (obj) {
                 scene.remove(obj);
@@ -2101,91 +2087,67 @@
         }
     }
 
+    // Returns snapped {x, z} — snaps cursor to last-waypoint or target axis within PIPE_SNAP_THRESHOLD
+    function applyAlignSnap(x, z, wpPos, tgtPos) {
+        const tol = PIPE_SNAP_THRESHOLD;
+        let sx = x, sz = z;
+        if (wpPos && Math.abs(wpPos.x - x) < tol) sx = wpPos.x;
+        else if (tgtPos && Math.abs(tgtPos.x - x) < tol) sx = tgtPos.x;
+        if (wpPos && Math.abs(wpPos.z - z) < tol) sz = wpPos.z;
+        else if (tgtPos && Math.abs(tgtPos.z - z) < tol) sz = tgtPos.z;
+        return { x: sx, z: sz };
+    }
+
     function updatePipeAlignGuides(cursorX, cursorY, cursorZ) {
         if (!pipeDrawingState || !pipeDrawingState.pipeAlignGuides) return;
         const guides = pipeDrawingState.pipeAlignGuides;
-        const tol = PIPE_ALIGN_TOLERANCE;
+        const tol  = PIPE_ALIGN_TOLERANCE;
+        const drawH = pipeDrawingState.currentHeight + 0.02;
 
-        // Collect all reference points to check alignment against:
-        // 1. Source port position
-        // 2. Target port position
-        // 3. All placed component positions
-        const refPoints = [];
+        // Last anchor: the previous waypoint (or stub-end if no waypoints yet)
+        const wpPos = getLastDrawAnchor();
 
-        const srcPos = pipeDrawingState.isBranch
-            ? pipeDrawingState.branchTeePoint.clone()
-            : getPortWorldPosition(pipeDrawingState.fromComp, pipeDrawingState.fromPort);
-        refPoints.push({ x: srcPos.x, y: srcPos.y, z: srcPos.z, label: 'src' });
-
-        const tgtPos = getPortWorldPosition(pipeDrawingState.toComp, pipeDrawingState.toPort);
-        refPoints.push({ x: tgtPos.x, y: tgtPos.y, z: tgtPos.z, label: 'tgt' });
-
-        for (const comp of placedComponents) {
-            refPoints.push({
-                x: comp.mesh.position.x,
-                y: comp.mesh.position.y,
-                z: comp.mesh.position.z,
-                label: 'comp'
-            });
-            // Also add each port's world position
-            for (const portName of Object.keys(comp.definition.ports)) {
-                const pp = getPortWorldPosition(comp, portName);
-                refPoints.push({ x: pp.x, y: pp.y, z: pp.z, label: 'port' });
-            }
+        // Target position
+        let tgtPos = null;
+        if (pipeDrawingState.toComp) {
+            tgtPos = getPortWorldPosition(pipeDrawingState.toComp, pipeDrawingState.toPort);
+        } else if (pipeDrawingState.endTeeData) {
+            tgtPos = pipeDrawingState.endTeeData.teePoint.clone();
         }
 
-        let matchX = false, matchZ = false, matchY = false;
-        let matchedZ = 0, matchedX = 0, matchedYVal = 0;
-
-        for (const ref of refPoints) {
-            // X alignment: cursor X matches ref X → show vertical line along Z
-            if (Math.abs(ref.x - cursorX) < tol) {
-                matchX = true;
-                matchedX = ref.x;
+        // Helper: update a guide line's geometry and visibility
+        function setLine(line, x1, y1, z1, x2, y2, z2, vis) {
+            if (vis) {
+                const pos = new Float32Array([x1, y1, z1, x2, y2, z2]);
+                line.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                line.geometry.attributes.position.needsUpdate = true;
+                line.computeLineDistances();
             }
-            // Z alignment: cursor Z matches ref Z → show horizontal line along X
-            if (Math.abs(ref.z - cursorZ) < tol) {
-                matchZ = true;
-                matchedZ = ref.z;
-            }
-            // Y alignment: cursor height matches ref Y
-            if (Math.abs(ref.y - cursorY) < tol && ref.y > 0.05) {
-                matchY = true;
-                matchedYVal = ref.y;
-            }
+            line.visible = vis;
         }
 
-        // X-match → show line along Z at matched X
-        if (matchX) {
-            const y = pipeDrawingState.currentHeight + 0.02;
-            const positions = new Float32Array([matchedX, y, -10, matchedX, y, 10]);
-            guides.lineZ.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            guides.lineZ.geometry.attributes.position.needsUpdate = true;
-            guides.lineZ.computeLineDistances();
-            guides.lineZ.visible = true;
-        } else {
-            guides.lineZ.visible = false;
-        }
+        // Blue: cursor X aligns with last waypoint → line runs along Z at wpPos.x
+        const wpMatchX = wpPos && Math.abs(wpPos.x - cursorX) < tol;
+        // Blue: cursor Z aligns with last waypoint → line runs along X at wpPos.z
+        const wpMatchZ = wpPos && Math.abs(wpPos.z - cursorZ) < tol;
+        // Cyan: cursor X aligns with target port → line runs along Z at tgtPos.x
+        const tgtMatchX = tgtPos && Math.abs(tgtPos.x - cursorX) < tol;
+        // Cyan: cursor Z aligns with target port → line runs along X at tgtPos.z
+        const tgtMatchZ = tgtPos && Math.abs(tgtPos.z - cursorZ) < tol;
 
-        // Z-match → show line along X at matched Z
-        if (matchZ) {
-            const y = pipeDrawingState.currentHeight + 0.02;
-            const positions = new Float32Array([-10, y, matchedZ, 10, y, matchedZ]);
-            guides.lineX.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            guides.lineX.geometry.attributes.position.needsUpdate = true;
-            guides.lineX.computeLineDistances();
-            guides.lineX.visible = true;
-        } else {
-            guides.lineX.visible = false;
-        }
+        // Z-direction lines (shown when X matches)
+        setLine(guides.lineZ_wp,  wpPos?.x  ?? 0, drawH, -12, wpPos?.x  ?? 0, drawH, 12, wpMatchX);
+        setLine(guides.lineZ_tgt, tgtPos?.x ?? 0, drawH, -12, tgtPos?.x ?? 0, drawH, 12, tgtMatchX && !wpMatchX);
 
-        // Y-match → show horizontal line at matched height (crossing cursor position)
-        if (matchY) {
-            const positions = new Float32Array([
-                cursorX - 2, matchedYVal, cursorZ,
-                cursorX + 2, matchedYVal, cursorZ
-            ]);
-            guides.lineY.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        // X-direction lines (shown when Z matches)
+        setLine(guides.lineX_wp,  -12, drawH, wpPos?.z  ?? 0, 12, drawH, wpPos?.z  ?? 0, wpMatchZ);
+        setLine(guides.lineX_tgt, -12, drawH, tgtPos?.z ?? 0, 12, drawH, tgtPos?.z ?? 0, tgtMatchZ && !wpMatchZ);
+
+        // Green height guide: currentHeight matches target port Y
+        const heightMatchTgt = tgtPos && Math.abs(tgtPos.y - pipeDrawingState.currentHeight) < tol && tgtPos.y > 0.05;
+        if (heightMatchTgt) {
+            const pos = new Float32Array([cursorX - 2.5, tgtPos.y, cursorZ, cursorX + 2.5, tgtPos.y, cursorZ]);
+            guides.lineY.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
             guides.lineY.geometry.attributes.position.needsUpdate = true;
             guides.lineY.computeLineDistances();
             guides.lineY.visible = true;
@@ -2197,9 +2159,9 @@
     function hidePipeAlignGuides() {
         if (!pipeDrawingState || !pipeDrawingState.pipeAlignGuides) return;
         const g = pipeDrawingState.pipeAlignGuides;
-        g.lineX.visible = false;
-        g.lineZ.visible = false;
-        g.lineY.visible = false;
+        for (const k of ['lineX_wp', 'lineZ_wp', 'lineX_tgt', 'lineZ_tgt', 'lineY']) {
+            g[k].visible = false;
+        }
     }
 
     // --- Pipe drawing preview and helpers ---
@@ -2255,7 +2217,7 @@
         // First waypoint is just past the port stub
         const stubEnd = startPos.clone().add(startDir.clone().multiplyScalar(STUB_LEN));
 
-        // Create dashed preview line
+        // Preview line 1: last anchor → cursor
         const previewMat = new THREE.LineDashedMaterial({
             color: 0x4fc3f7, dashSize: 0.2, gapSize: 0.1,
             transparent: true, opacity: 0.6
@@ -2264,6 +2226,17 @@
         const previewLine = new THREE.Line(previewGeo, previewMat);
         previewLine.computeLineDistances();
         scene.add(previewLine);
+
+        // Preview line 2: cursor → target port (grey-blue, dimmer)
+        const previewMatTgt = new THREE.LineDashedMaterial({
+            color: 0x78909c, dashSize: 0.15, gapSize: 0.12,
+            transparent: true, opacity: 0.35
+        });
+        const previewGeoTgt = new THREE.BufferGeometry().setFromPoints([stubEnd.clone(), stubEnd.clone()]);
+        const previewLineTgt = new THREE.Line(previewGeoTgt, previewMatTgt);
+        previewLineTgt.computeLineDistances();
+        previewLineTgt.visible = false;
+        scene.add(previewLineTgt);
 
         // Create height indicator
         const heightIndicator = createHeightIndicator();
@@ -2280,6 +2253,7 @@
             toPort,
             waypoints: [],
             previewLine,
+            previewLineTgt,
             waypointMarkers: [],
             currentHeight: startPos.y,
             heightIndicator,
@@ -2315,6 +2289,16 @@
         previewLine.computeLineDistances();
         scene.add(previewLine);
 
+        const previewMatTgt = new THREE.LineDashedMaterial({
+            color: 0x78909c, dashSize: 0.15, gapSize: 0.12,
+            transparent: true, opacity: 0.35
+        });
+        const previewGeoTgt = new THREE.BufferGeometry().setFromPoints([stubEnd.clone(), stubEnd.clone()]);
+        const previewLineTgt = new THREE.Line(previewGeoTgt, previewMatTgt);
+        previewLineTgt.computeLineDistances();
+        previewLineTgt.visible = false;
+        scene.add(previewLineTgt);
+
         const heightIndicator = createHeightIndicator();
         const pipeAlignGuides = createPipeAlignGuides();
 
@@ -2327,6 +2311,7 @@
             toPort,
             waypoints: [],
             previewLine,
+            previewLineTgt,
             waypointMarkers: [],
             currentHeight: teePoint.y,
             heightIndicator,
@@ -2351,7 +2336,7 @@
             : (pipeDrawingState.fromComp ? pipeDrawingState.fromComp.definition.name : '?');
         const to = pipeDrawingState.endTeeData ? 'rörledning (T-anslutning)'
             : (pipeDrawingState.toComp ? pipeDrawingState.toComp.definition.name : '?');
-        setStatus(`${from} → ${to} [${n} pt, höjd: ${h}] — Klicka = waypoint | Enter = slutför | Q/E höjd | Dra = kamera | Högerklick = ångra | Esc = avbryt`);
+        setStatus(`${from} → ${to} [${n} pt, höjd: ${h}] — Klicka = waypoint | Enter = slutför | Q/E höjd | Shift = höjdlås | Dra = kamera | Högerklick = ångra | Esc = avbryt`);
     }
 
     // Start drawing a pipe from a component port to a tee on an existing pipe
@@ -2377,6 +2362,16 @@
         previewLine.computeLineDistances();
         scene.add(previewLine);
 
+        const previewMatTgt = new THREE.LineDashedMaterial({
+            color: 0x78909c, dashSize: 0.15, gapSize: 0.12,
+            transparent: true, opacity: 0.35
+        });
+        const previewGeoTgt = new THREE.BufferGeometry().setFromPoints([stubEnd.clone(), stubEnd.clone()]);
+        const previewLineTgt = new THREE.Line(previewGeoTgt, previewMatTgt);
+        previewLineTgt.computeLineDistances();
+        previewLineTgt.visible = false;
+        scene.add(previewLineTgt);
+
         const heightIndicator = createHeightIndicator();
         const pipeAlignGuides = createPipeAlignGuides();
 
@@ -2390,6 +2385,7 @@
             endTeeData: { pipeId: targetPipe.id, teePoint, teeParam },
             waypoints: [],
             previewLine,
+            previewLineTgt,
             waypointMarkers: [],
             currentHeight: startPos.y,
             heightIndicator,
@@ -2449,9 +2445,13 @@
 
     function addPipeWaypoint(point) {
         if (!pipeDrawingState) return;
+
+        // Get previous anchor BEFORE adding the new waypoint (used for segment line)
+        const prevAnchor = getLastDrawAnchor();
+
         pipeDrawingState.waypoints.push(point.clone());
 
-        // Add visual marker sphere
+        // Sphere marker at the new waypoint
         const geo = new THREE.SphereGeometry(0.08, 8, 8);
         const mat = new THREE.MeshStandardMaterial({
             color: 0x4fc3f7, emissive: 0x4fc3f7, emissiveIntensity: 0.5
@@ -2460,6 +2460,35 @@
         marker.position.copy(point);
         scene.add(marker);
         pipeDrawingState.waypointMarkers.push(marker);
+
+        // Dashed segment line from previous anchor to this waypoint
+        const segMat = new THREE.LineDashedMaterial({
+            color: 0x4fc3f7, dashSize: 0.18, gapSize: 0.09,
+            transparent: true, opacity: 0.80
+        });
+        const segGeo = new THREE.BufferGeometry().setFromPoints([prevAnchor.clone(), point.clone()]);
+        const segLine = new THREE.Line(segGeo, segMat);
+        segLine.computeLineDistances();
+        scene.add(segLine);
+
+        // Directional arrow cone at 70% along the segment (shows flow direction)
+        const segDir = point.clone().sub(prevAnchor).normalize();
+        const segLen = point.distanceTo(prevAnchor);
+        let arrow = null;
+        if (segLen > 0.15) {
+            const arrowGeo = new THREE.ConeGeometry(0.07, 0.18, 8);
+            const arrowMat = new THREE.MeshStandardMaterial({
+                color: 0x4fc3f7, emissive: 0x29b6f6, emissiveIntensity: 0.4
+            });
+            arrow = new THREE.Mesh(arrowGeo, arrowMat);
+            arrow.position.copy(prevAnchor.clone().lerp(point, 0.70));
+            // Rotate cone (default +Y axis) to point along segment direction
+            arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), segDir);
+            scene.add(arrow);
+        }
+
+        if (!pipeDrawingState.waypointSegments) pipeDrawingState.waypointSegments = [];
+        pipeDrawingState.waypointSegments.push({ line: segLine, arrow });
 
         pipeDrawingStatusMsg();
     }
@@ -2477,6 +2506,18 @@
             scene.remove(marker);
             if (marker.geometry) marker.geometry.dispose();
             if (marker.material) marker.material.dispose();
+        }
+        // Remove the corresponding segment + arrow
+        if (pipeDrawingState.waypointSegments && pipeDrawingState.waypointSegments.length > 0) {
+            const seg = pipeDrawingState.waypointSegments.pop();
+            scene.remove(seg.line);
+            if (seg.line.geometry) seg.line.geometry.dispose();
+            if (seg.line.material) seg.line.material.dispose();
+            if (seg.arrow) {
+                scene.remove(seg.arrow);
+                if (seg.arrow.geometry) seg.arrow.geometry.dispose();
+                if (seg.arrow.material) seg.arrow.material.dispose();
+            }
         }
         pipeDrawingStatusMsg();
     }
@@ -2502,34 +2543,64 @@
         mouse.y = -((mouseEvent.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
 
-        // Raycast against a horizontal plane at currentHeight
+        // Shift = height-lock: constrain plane to last anchor Y
+        let planeH = pipeDrawingState.currentHeight;
+        if (mouseEvent.shiftKey) {
+            const anchor = getLastDrawAnchor();
+            if (anchor) planeH = anchor.y;
+        }
+
+        // Raycast against horizontal plane at planeH
         const planeNormal = new THREE.Vector3(0, 1, 0);
-        const planePoint = new THREE.Vector3(0, pipeDrawingState.currentHeight, 0);
+        const planePoint  = new THREE.Vector3(0, planeH, 0);
         const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, planePoint);
         const intersection = new THREE.Vector3();
         if (!raycaster.ray.intersectPlane(plane, intersection)) return;
 
-        // Snap to grid (0.5 steps)
+        // Snap to 0.5 grid
         intersection.x = Math.round(intersection.x * 2) / 2;
         intersection.z = Math.round(intersection.z * 2) / 2;
 
-        // Update height indicator at cursor position
+        // Apply alignment snap (blue=last anchor, cyan=target)
+        const lastAnchor = getLastDrawAnchor();
+        let tgtPos = null;
+        if (pipeDrawingState.toComp) {
+            tgtPos = getPortWorldPosition(pipeDrawingState.toComp, pipeDrawingState.toPort);
+        } else if (pipeDrawingState.endTeeData) {
+            tgtPos = pipeDrawingState.endTeeData.teePoint.clone();
+        }
+        const snapped = applyAlignSnap(intersection.x, intersection.z, lastAnchor, tgtPos);
+        intersection.x = snapped.x;
+        intersection.z = snapped.z;
+
+        // Update height indicator and alignment guides
         updateHeightIndicator(intersection.x, intersection.z);
+        updatePipeAlignGuides(intersection.x, planeH, intersection.z);
 
-        // Update pipe alignment guides
-        updatePipeAlignGuides(intersection.x, intersection.y || pipeDrawingState.currentHeight, intersection.z);
-
-        // Update preview line from last anchor to cursor
-        const lastPoint = getLastDrawAnchor();
-        const positions = new Float32Array([
-            lastPoint.x, lastPoint.y, lastPoint.z,
+        // Preview line 1: last anchor → cursor
+        const positions1 = new Float32Array([
+            lastAnchor.x, lastAnchor.y, lastAnchor.z,
             intersection.x, intersection.y, intersection.z
         ]);
         pipeDrawingState.previewLine.geometry.setAttribute(
-            'position', new THREE.BufferAttribute(positions, 3)
+            'position', new THREE.BufferAttribute(positions1, 3)
         );
         pipeDrawingState.previewLine.geometry.attributes.position.needsUpdate = true;
         pipeDrawingState.previewLine.computeLineDistances();
+
+        // Preview line 2: cursor → target port (if known)
+        if (pipeDrawingState.previewLineTgt && tgtPos) {
+            const positions2 = new Float32Array([
+                intersection.x, intersection.y, intersection.z,
+                tgtPos.x, tgtPos.y, tgtPos.z
+            ]);
+            pipeDrawingState.previewLineTgt.geometry.setAttribute(
+                'position', new THREE.BufferAttribute(positions2, 3)
+            );
+            pipeDrawingState.previewLineTgt.geometry.attributes.position.needsUpdate = true;
+            pipeDrawingState.previewLineTgt.computeLineDistances();
+            pipeDrawingState.previewLineTgt.visible = true;
+        }
     }
 
     function getDrawingPlanePoint(mouseEvent) {
@@ -2539,15 +2610,38 @@
         mouse.y = -((mouseEvent.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
 
+        // Shift = height-lock to last anchor Y
+        let planeH = pipeDrawingState.currentHeight;
+        if (mouseEvent.shiftKey) {
+            const anchor = getLastDrawAnchor();
+            if (anchor) planeH = anchor.y;
+        }
+
         const planeNormal = new THREE.Vector3(0, 1, 0);
-        const planePoint = new THREE.Vector3(0, pipeDrawingState.currentHeight, 0);
+        const planePoint  = new THREE.Vector3(0, planeH, 0);
         const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, planePoint);
         const intersection = new THREE.Vector3();
         if (!raycaster.ray.intersectPlane(plane, intersection)) return null;
 
-        // Snap to grid (0.5 steps)
+        // Snap to 0.5 grid
         intersection.x = Math.round(intersection.x * 2) / 2;
         intersection.z = Math.round(intersection.z * 2) / 2;
+
+        // Apply alignment snap
+        const lastAnchor = getLastDrawAnchor();
+        let tgtPos = null;
+        if (pipeDrawingState.toComp) {
+            tgtPos = getPortWorldPosition(pipeDrawingState.toComp, pipeDrawingState.toPort);
+        } else if (pipeDrawingState.endTeeData) {
+            tgtPos = pipeDrawingState.endTeeData.teePoint.clone();
+        }
+        const snapped = applyAlignSnap(intersection.x, intersection.z, lastAnchor, tgtPos);
+        intersection.x = snapped.x;
+        intersection.z = snapped.z;
+
+        // If height-locked, fix Y to planeH
+        if (mouseEvent.shiftKey) intersection.y = planeH;
+
         return intersection;
     }
 
@@ -2561,11 +2655,16 @@
 
     function cleanupPipeDrawing() {
         if (!pipeDrawingState) return;
-        // Remove preview line
+        // Remove preview lines
         if (pipeDrawingState.previewLine) {
             scene.remove(pipeDrawingState.previewLine);
             if (pipeDrawingState.previewLine.geometry) pipeDrawingState.previewLine.geometry.dispose();
             if (pipeDrawingState.previewLine.material) pipeDrawingState.previewLine.material.dispose();
+        }
+        if (pipeDrawingState.previewLineTgt) {
+            scene.remove(pipeDrawingState.previewLineTgt);
+            if (pipeDrawingState.previewLineTgt.geometry) pipeDrawingState.previewLineTgt.geometry.dispose();
+            if (pipeDrawingState.previewLineTgt.material) pipeDrawingState.previewLineTgt.material.dispose();
         }
         // Remove height indicator
         if (pipeDrawingState.heightIndicator) {
@@ -2587,6 +2686,19 @@
                 scene.remove(marker);
                 if (marker.geometry) marker.geometry.dispose();
                 if (marker.material) marker.material.dispose();
+            }
+        }
+        // Remove waypoint segment lines and arrows
+        if (pipeDrawingState.waypointSegments) {
+            for (const seg of pipeDrawingState.waypointSegments) {
+                scene.remove(seg.line);
+                if (seg.line.geometry) seg.line.geometry.dispose();
+                if (seg.line.material) seg.line.material.dispose();
+                if (seg.arrow) {
+                    scene.remove(seg.arrow);
+                    if (seg.arrow.geometry) seg.arrow.geometry.dispose();
+                    if (seg.arrow.material) seg.arrow.material.dispose();
+                }
             }
         }
         // Remove temporary tee marker (from branch mode)
