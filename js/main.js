@@ -153,6 +153,38 @@
     let furnaceTimerDuration = 0;     // Sekunder för aktuell timer
     let furnaceTimerInterval = null;  // setInterval-id för countdown-display
 
+    // --- Funktionell Instrumentering (Iteration 1) ---
+    const PV_DEFINITIONS = [
+        {
+            key: 'FUEL_PRESSURE', label: 'Bränslegastryck', unit: 'bar g',
+            min: 0, max: 2.0, decimals: 2,
+            normalMin: 0.20, normalMax: 1.0,
+            alarmHigh: 1.5
+        },
+        {
+            key: 'CHAMBER_TEMP', label: 'Kammartemperatur', unit: '°C',
+            min: 20, max: 900, decimals: 0,
+            normalMin: 100, normalMax: 700,
+            alarmHigh: 850
+        },
+        {
+            key: 'FLUE_DRAFT', label: 'Ugnsdrag', unit: 'mmH₂O',
+            min: -12, max: 2, decimals: 1,
+            normalMin: -4.0, normalMax: -0.5,
+            alarmLow: -9
+        },
+        {
+            key: 'FLAME_DETECT', label: 'Flamdetektion', unit: null,
+            isStatus: true,
+            statusLabels: ['Ingen', 'Pilot', 'Full'],
+            statusColors: ['#ef5350', '#ffa726', '#66bb6a']
+        }
+    ];
+    const PV_RAMP = { FUEL_PRESSURE: 0.05, CHAMBER_TEMP: 10, FLUE_DRAFT: 0.4 };
+    let pvState   = {};
+    let pvAlarms  = {};
+    let processEngineInterval = null;
+
     // --- Fas 4: Sequence state ---
     let activeSequence = null;
     let sequenceStepIndex = 0;
@@ -4903,6 +4935,7 @@
     }
 
     function cancelSequence() {
+        stopProcessEngine();
         if (sequenceValidationInterval) {
             clearInterval(sequenceValidationInterval);
             sequenceValidationInterval = null;
@@ -5206,6 +5239,8 @@
                 clearInterval(sequenceValidationInterval);
                 sequenceValidationInterval = null;
             }
+            // Stop process engine when furnace scenario completes
+            if (activeSequence.isFurnaceScenario) stopProcessEngine();
             // Clear faults on scenario completion
             if (activeSequence.isFaultScenario) {
                 clearAllFaults();
@@ -5444,6 +5479,160 @@
     }
 
     // =========================================================
+    // --- Funktionell Instrumentering: Process Engine ---
+    // =========================================================
+
+    function initPvState() {
+        pvState  = { FUEL_PRESSURE: 0, CHAMBER_TEMP: 20, FLUE_DRAFT: 0, FLAME_DETECT: 0 };
+        pvAlarms = { FUEL_PRESSURE: false, CHAMBER_TEMP: false, FLUE_DRAFT: false, FLAME_DETECT: false };
+    }
+
+    function countActiveBurners(fs) {
+        let n = 0;
+        for (let i = 1; i <= 6; i++) if (fs[`KIKV_A${i}`] === 'open') n++;
+        return n;
+    }
+
+    function computePVTargets(fs) {
+        const tsoOpen      = fs.TSO_AA === 'open';
+        const pilotLit     = fs.PILOT_A === 'lit';
+        const activeBurners = countActiveBurners(fs);
+        const flueState    = fs.FLUE_DAMPER;
+        const flueOpen     = flueState === 'open' || flueState === 'adjusted';
+
+        // Bränslegastryck: stiger när TSO_AA öppnas
+        const targetPressure = tsoOpen ? 0.40 : 0;
+
+        // Kammartemperatur: ambient → stiger per brännare
+        let targetTemp = 20;
+        if (pilotLit) targetTemp = 70;
+        if (activeBurners > 0) targetTemp = 120 + activeBurners * 80;
+        if (fs.PRIM_AIR_A === 'adjusted') targetTemp = Math.min(targetTemp * 1.08, 850);
+
+        // Ugnsdrag: bildas när spjäll öppnas, förstärks av brännare
+        let targetDraft = 0;
+        if (flueOpen) targetDraft = -1.0;
+        if (flueOpen && activeBurners > 0) targetDraft = -2.0 - activeBurners * 0.15;
+        if (flueState === 'adjusted') targetDraft = -2.0;
+
+        // Flamdetektion: 0=ingen, 1=pilot, 2=full
+        const flameDetect = activeBurners > 0 ? 2 : pilotLit ? 1 : 0;
+
+        return {
+            FUEL_PRESSURE: Math.min(targetPressure, 2.0),
+            CHAMBER_TEMP:  Math.min(targetTemp, 850),
+            FLUE_DRAFT:    Math.max(targetDraft, -12),
+            FLAME_DETECT:  flameDetect
+        };
+    }
+
+    function tickProcessEngine() {
+        const furnaceComp = placedComponents.find(c => c.type === 'furnace_training');
+        if (!furnaceComp || !furnaceComp.furnaceState) return;
+
+        const targets = computePVTargets(furnaceComp.furnaceState);
+
+        // Rampa värden mot mål
+        for (const pvDef of PV_DEFINITIONS) {
+            if (pvDef.isStatus) { pvState[pvDef.key] = targets[pvDef.key]; continue; }
+            const cur  = pvState[pvDef.key] ?? pvDef.min;
+            const tgt  = targets[pvDef.key];
+            const rate = PV_RAMP[pvDef.key] ?? 1;
+            const diff = tgt - cur;
+            pvState[pvDef.key] = Math.abs(diff) < rate * 0.1 ? tgt : cur + Math.sign(diff) * rate;
+        }
+
+        // Larmkontroll
+        for (const pvDef of PV_DEFINITIONS) {
+            if (pvDef.isStatus) continue;
+            const v = pvState[pvDef.key];
+            pvAlarms[pvDef.key] =
+                (pvDef.alarmLow  != null && v < pvDef.alarmLow)  ||
+                (pvDef.alarmHigh != null && v > pvDef.alarmHigh);
+        }
+
+        updateInstrumentPanel();
+    }
+
+    function buildInstrumentPanel() {
+        const list = document.getElementById('inst-pv-list');
+        list.innerHTML = '';
+        for (const pvDef of PV_DEFINITIONS) {
+            const row = document.createElement('div');
+            row.className = 'inst-pv-row';
+            row.id = `inst-row-${pvDef.key}`;
+            if (pvDef.isStatus) {
+                row.innerHTML = `
+                    <div class="inst-pv-label">${pvDef.label}</div>
+                    <span class="inst-pv-status-badge" id="inst-val-${pvDef.key}">—</span>`;
+            } else {
+                row.innerHTML = `
+                    <div class="inst-pv-label">${pvDef.label}</div>
+                    <div class="inst-pv-value"><span id="inst-val-${pvDef.key}">—</span> <small>${pvDef.unit}</small></div>
+                    <div class="inst-pv-bar-track"><div class="inst-pv-bar-fill" id="inst-bar-${pvDef.key}" style="width:0%"></div></div>
+                    <div class="inst-pv-alarm" id="inst-alarm-${pvDef.key}">⚠ LARM</div>`;
+            }
+            list.appendChild(row);
+        }
+        // Interlock-meddelande (visas vid blockerat CCR-steg)
+        const ilDiv = document.createElement('div');
+        ilDiv.className = 'inst-interlock-msg';
+        ilDiv.id = 'inst-interlock-msg';
+        list.appendChild(ilDiv);
+    }
+
+    function updateInstrumentPanel() {
+        for (const pvDef of PV_DEFINITIONS) {
+            const val = pvState[pvDef.key] ?? 0;
+            if (pvDef.isStatus) {
+                const el = document.getElementById(`inst-val-${pvDef.key}`);
+                if (!el) continue;
+                const idx = Math.round(val);
+                el.textContent = pvDef.statusLabels[idx] ?? '—';
+                el.style.background = pvDef.statusColors[idx] || '#78909c';
+                el.style.color = 'white';
+                continue;
+            }
+            const valEl   = document.getElementById(`inst-val-${pvDef.key}`);
+            const barEl   = document.getElementById(`inst-bar-${pvDef.key}`);
+            const alarmEl = document.getElementById(`inst-alarm-${pvDef.key}`);
+            if (!valEl || !barEl || !alarmEl) continue;
+
+            valEl.textContent = val.toFixed(pvDef.decimals);
+            const pct = ((val - pvDef.min) / (pvDef.max - pvDef.min)) * 100;
+            barEl.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+
+            const alarming = pvAlarms[pvDef.key];
+            const inNormal = pvDef.normalMin != null
+                ? val >= pvDef.normalMin && val <= pvDef.normalMax : true;
+            barEl.style.backgroundColor = alarming ? '#ef5350' : inNormal ? '#66bb6a' : '#ffa726';
+            alarmEl.classList.toggle('active', alarming);
+        }
+    }
+
+    function showInterlockMessage(msg) {
+        const el = document.getElementById('inst-interlock-msg');
+        if (!el) return;
+        el.textContent = '⛔ ' + msg;
+        el.classList.add('active');
+        setTimeout(() => el.classList.remove('active'), 4000);
+    }
+
+    function startProcessEngine() {
+        initPvState();
+        buildInstrumentPanel();
+        document.getElementById('instrument-panel').style.display = 'block';
+        processEngineInterval = setInterval(tickProcessEngine, 500);
+    }
+
+    function stopProcessEngine() {
+        if (processEngineInterval) {
+            clearInterval(processEngineInterval);
+            processEngineInterval = null;
+        }
+        document.getElementById('instrument-panel').style.display = 'none';
+    }
+
     // --- Ugnsmodul: Scenario-start, CCR-knapp ---
     // =========================================================
 
@@ -5492,6 +5681,7 @@
 
         updateSequenceUI();
         startSequenceValidation();
+        startProcessEngine();
     }
 
     // CCR-knappens click-event (sätts en gång)
@@ -5501,6 +5691,18 @@
         if (!step || step.action.type !== 'furnace_ccr') return;
         const comp = findComponentByTypeIndex(step.action.componentType, 0);
         if (!comp) return;
+
+        // Interlock-kontroll: blockera om villkor ej uppfyllt
+        if (step.action.interlock) {
+            const il = step.action.interlock;
+            const ilComp = findComponentByTypeIndex(il.componentType || step.action.componentType, 0);
+            if (ilComp && ilComp.furnaceState[il.key] !== il.requiredState) {
+                showInterlockMessage(il.failMessage);
+                setStatus(`⛔ Interlock: ${il.failMessage}`);
+                return;
+            }
+        }
+
         comp.furnaceState[step.action.ccrKey] = true;
         // Apply any visual state changes declared on this CCR step
         if (step.action.updatesState) {

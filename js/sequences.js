@@ -660,7 +660,7 @@ const FURNACE_SCENARIOS = {
             {
                 instruction: '[FAS 3] CCR — trycksätt sektion A via TSO_AA',
                 detail: 'Be CCR öppna TSO_AA (drift-ventil sektion A) till specificerat trycksättningstryck för att trycksätta bränsleledan till sektion A. Klicka CCR-knappen nedan.',
-                action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_PRESSURIZE_A', updatesState: { TSO_AA: 'open' }, ccrMessage: 'Be CCR öppna TSO_AA till specificerat trycksättningstryck. Vänta på bekräftelse att trycket är stabilt.' }
+                action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_PRESSURIZE_A', updatesState: { TSO_AA: 'open' }, ccrMessage: 'Be CCR öppna TSO_AA till specificerat trycksättningstryck. Vänta på bekräftelse att trycket är stabilt.', interlock: { key: 'PILOT_A', requiredState: 'lit', failMessage: 'PILOT_A ej tänd — tänd piloten innan TSO_AA öppnas' } }
             },
             {
                 instruction: '[FAS 3] Öppna brännare A1 (KIKV_A1)',
