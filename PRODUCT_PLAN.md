@@ -117,15 +117,16 @@ processbuilder3d-docker-v1.2.tar       ← Docker-image, driftsätt med en rad:
 | **Enterprise License** | Hela organisationen | Obegränsat, alla anläggningar | B (intranät) + central admin |
 | **Pilotlicens** | Utvärdering | 5 användare, 3 månader | A (lokal) |
 
-### Prisintervall (riktmärken)
+### Produktnivåer och Prisintervall (riktmärken)
 
 > Exakta priser sätts i samråd med marknaden. Dessa är riktlinjer baserade på jämförbara industriutbildningsverktyg.
 
-| Licensnivå | Engångskostnad | Underhållsavtal/år |
-|---|---|---|
-| Pilotlicens | Gratis eller symbolisk | — |
-| Site License | 150 000 – 400 000 SEK | 20–30% av licenskostnad |
-| Enterprise License | 500 000 – 1 200 000 SEK | 20–30% av licenskostnad |
+| Produktnivå | Innehåll | Engångskostnad | Underhåll/år |
+|---|---|---|---|
+| **Pilotlicens** | Standard, 5 användare, 3 månader | Gratis eller symbolisk | — |
+| **Standard** | 3D-byggverktyg + guidade procedurer (Fas A+B) | 150 000 – 400 000 SEK | 20–30% |
+| **Professional / Simulation** | + Funktionell instrumentering + interlocks (Fas C) | ~450 000 SEK | 20–30% |
+| **Enterprise** | + Scenarioredigerare + rapportexport + central admin | 500 000 – 1 200 000 SEK | 20–30% |
 
 **Tilläggstjänster (arvodesbaserade):**
 - Skräddarsydda komponenter för kundens specifika anläggning
@@ -136,7 +137,7 @@ processbuilder3d-docker-v1.2.tar       ← Docker-image, driftsätt med en rad:
 
 ## 5. Teknisk Roadmap mot Säljbar Version
 
-Nuläge är en funktionell prototyp. Nedan beskrivs vad som behöver adderas för en säljbar v1.0.
+Fas A och B är klara. Fas C (funktionell instrumentering) är nästa prioritet och tar produkten till Professional-nivå. Fas D och E (produktifiering och marknad) följer därefter.
 
 ### Fas A – Kärnfunktioner (klart)
 - [x] 59 komponenter med 3D-modeller (14 kategorier)
@@ -151,14 +152,36 @@ Nuläge är en funktionell prototyp. Nedan beskrivs vad som behöver adderas fö
 - [x] Enkel flödessimulering (animerade pilar längs rör, on/off per komponent)
 - [x] Uppstartssekvenser steg-för-steg (ugnsläromodul: 26-stegs interaktiv uppstart, CCR-bekräftelser, timer)
 
-### Fas C – Produktifiering
+### Fas C – Funktionell Instrumentering (nästa prioritet)
+
+*Tar produkten från procedurövning till interaktiv träningssimulator. Se `Funktionell_Instrumentering_strategi.md` för detaljerad teknisk plan.*
+
+**Iteration 1 — Bevisa konceptet (ugnsscenariots)**
+- [ ] `processEngine` — tick-loop (500 ms) aktiverad vid scenariostart
+- [ ] 3–4 PV:er för ugnsscenariots komponenter (bränslegastryck, kammartemperatur, ugnsdrag, flamdetektion)
+- [ ] HTML instrumentpanel (`#instrument-panel`) bredvid sekvens-panelen
+- [ ] Larm-badge (H/L-gränsvärden) med visuell indikation
+- [ ] Minst ett interlock kopplat till steg-validering (t.ex. TSO kan ej öppnas utan tänd pilot)
+
+**Iteration 2 — Generaliserad modell och What-If-läge**
+- [ ] PV-modell per komponenttyp i `components.js` (liknande `initialFurnaceState`)
+- [ ] Topologitraversering av pipe-grafen — motor vet vad som flödar vart
+- [ ] "What-if"-läge: fri manövrering med live PV-feedback utan aktivt scenario
+- [ ] Generaliserad larmhantering för alla aktiva PV:er
+
+**Iteration 3 — Scenarioredigerare och rapport**
+- [ ] Scenario-editor: definiera PV-kopplingar och interlocks utan programmering
+- [ ] PV-logik för fler komponenttyper (pumpar, kolonner, separatorer)
+- [ ] Exporterbar träningsrapport med tidsstämplad larmhistorik
+
+### Fas D – Produktifiering
 - [ ] Electron-wrapper (Variant A – lokal app)
 - [ ] Docker-packaging (Variant B – intranät)
 - [ ] Splash screen, om-dialog, licenshantering
 - [ ] Inbyggd hjälp / dokumentation
 - [ ] Installationspaket och release-pipeline
 
-### Fas D – Marknadsintroduktion
+### Fas E – Marknadsintroduktion
 - [ ] Pilotprojekt med 1–2 industripartners (gratis/symbolisk kostnad)
 - [ ] Referenscase och testimonials
 - [ ] Säljmaterial (produktblad, demo-video, webbsida)
