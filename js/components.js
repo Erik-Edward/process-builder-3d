@@ -5506,6 +5506,7 @@ const COMPONENT_DEFINITIONS = {
                 pilotFlame.position.set(PILOT_X, LIFT + 0.13, PILOT_Z);
                 pilotFlame.visible = false;
                 pilotFlame.userData.furnaceFlame = `PILOT_${sec}`;
+                pilotFlame.userData.baseEmissiveInt = 1.8;
                 group.add(pilotFlame);
 
                 // Gaskoppling (lådan vid sondstaven, i nivå med gasoltubens ventil)
@@ -5840,6 +5841,7 @@ const COMPONENT_DEFINITIONS = {
                     outerFlame.position.set(xOff, LIFT + 0.40, BZ[b]);
                     outerFlame.visible = false;
                     outerFlame.userData.furnaceFlame = bKey;
+                    outerFlame.userData.baseEmissiveInt = 1.4;
                     group.add(outerFlame);
                     // Inner flame (yellow-white, narrower, brighter)
                     const innerFlame = new THREE.Mesh(
@@ -5852,6 +5854,7 @@ const COMPONENT_DEFINITIONS = {
                     innerFlame.position.set(xOff, LIFT + 0.36, BZ[b]);
                     innerFlame.visible = false;
                     innerFlame.userData.furnaceFlame = bKey;
+                    innerFlame.userData.baseEmissiveInt = 2.2;
                     group.add(innerFlame);
                 }
 

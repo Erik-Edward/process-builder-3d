@@ -718,6 +718,20 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 
 ---
 
+### Session 17 – Animerade flammor
+
+#### Flame animation i `animate()`-loopen
+- **`flameTime = Date.now() * 0.001`** — sekundbaserad tid, jämn löpande utan delta-ackumulering
+- **Unik fas per flamma:** `phase = child.position.x * 2.31 + child.position.z * 1.73` — primskalade positionsvärden ger icke-periodisk fördelning; inga synkroniserade flammor
+- **Höjdflimmer (Y-skala):** brännare ±20% @ 5.2 Hz, pilot ±12% @ 7.5 Hz (snabbare, stabilare pilotrör)
+- **Breddflimmer (XZ-skala):** motfasad mot höjden — smalnar när lågan är lång, vidgas när kort (bevarar visuell "flamvolym")
+- **Vippning:** `rotation.x` och `rotation.z` med olika frekvenser (3.1 Hz och 4.3 Hz) och faser — organiskt dansande rörelsemönster utan axelsymmetri
+- **Emissiv intensitetspuls:** tredje sinusvåg @ 6.8 Hz, oberoende fas (× 1.3) — flimrar oberoende av skalsättningen; pilot ±0.30, brännare ±0.45 kring `baseEmissiveInt`
+- **`userData.baseEmissiveInt`** tillagt på pilot- (1.8) och brännarflammor (outer 1.4, inner 2.2) i `components.js` — animationsloopen läser basvärdet istf. att hårdkoda det
+- Loopen hoppar över icke-synliga flammor (`!child.visible`) — ingen CPU-kostnad när flammorna är släckta
+
+---
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil

@@ -5872,6 +5872,32 @@
             }
         }
 
+        // Animate furnace flames
+        const flameTime = Date.now() * 0.001;
+        for (const comp of placedComponents) {
+            if (comp.type !== 'furnace_training') continue;
+            comp.mesh.traverse(child => {
+                if (!child.userData.furnaceFlame || !child.visible) return;
+                const isPilot = child.userData.furnaceFlame.startsWith('PILOT_');
+                // Unique phase per flame — avoids synchronized flickering
+                const phase = child.position.x * 2.31 + child.position.z * 1.73;
+                const freq  = isPilot ? 7.5 : 5.2;
+                // Height flicker: taller when narrower (conservation of "flame volume")
+                const yFlick  = 1.0 + (isPilot ? 0.12 : 0.20) * Math.sin(flameTime * freq + phase);
+                const xzFlick = 1.0 - (isPilot ? 0.06 : 0.10) * Math.sin(flameTime * freq + phase);
+                child.scale.set(xzFlick, yFlick, xzFlick);
+                // Gentle tilt — flame dances slightly side to side
+                child.rotation.x = (isPilot ? 0.04 : 0.07) * Math.sin(flameTime * 3.1 + phase + 1.0);
+                child.rotation.z = (isPilot ? 0.03 : 0.05) * Math.sin(flameTime * 4.3 + phase + 0.5);
+                // Emissive intensity pulse for glow flicker
+                if (child.material) {
+                    const base = child.userData.baseEmissiveInt ?? 1.5;
+                    child.material.emissiveIntensity =
+                        base + (isPilot ? 0.30 : 0.45) * Math.sin(flameTime * 6.8 + phase * 1.3);
+                }
+            });
+        }
+
         // Sequence component highlight
         updateSequenceHighlight(delta);
 
