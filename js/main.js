@@ -152,6 +152,7 @@
     let furnaceTimerStart = null;     // Tidsstämpel (Date.now()) vid start av furnace_timer-steg
     let furnaceTimerDuration = 0;     // Sekunder för aktuell timer
     let furnaceTimerInterval = null;  // setInterval-id för countdown-display
+    let pvWaitStepStartTime = null;   // Tidsstämpel när ett furnace_wait_pv-steg startades
 
     // --- Funktionell Instrumentering (Iteration 1) ---
     const PV_DEFINITIONS = [
@@ -180,7 +181,7 @@
             statusColors: ['#ef5350', '#ffa726', '#66bb6a']
         }
     ];
-    const PV_RAMP = { FUEL_PRESSURE: 0.05, CHAMBER_TEMP: 10, FLUE_DRAFT: 0.4 };
+    const PV_RAMP = { FUEL_PRESSURE: 0.02, CHAMBER_TEMP: 10, FLUE_DRAFT: 0.4 };
     let pvState   = {};
     let pvAlarms  = {};
     let processEngineInterval = null;
@@ -3029,6 +3030,16 @@
                 setStatus(`✕ Fel element — klicka på ${action.key}`);
                 return;
             }
+            // PV-based interlock (t.ex. kräv minsta bränsletryck innan KIKV öppnas)
+            if (action.interlock && action.interlock.pvKey) {
+                const il = action.interlock;
+                const val = pvState[il.pvKey] ?? 0;
+                if ((il.pvMin != null && val < il.pvMin) || (il.pvMax != null && val > il.pvMax)) {
+                    showInterlockMessage(il.failMessage);
+                    setStatus(`⛔ Interlock: ${il.failMessage}`);
+                    return;
+                }
+            }
             // Utför interaktionen
             comp.furnaceState[key] = action.targetState;
             updateFurnaceElementVisual(comp, key);
@@ -3124,6 +3135,14 @@
             applyColor(child);
             child.traverse(part => { if (part !== child) applyColor(part); });
         });
+
+        // Visa/dölj flammor (furnaceFlame meshes har inget furnaceKey — separata objekt)
+        if (key.startsWith('PILOT_') || key.startsWith('BURNER_')) {
+            const flameOn = (state === 'lit' || state === true);
+            comp.mesh.traverse(child => {
+                if (child.userData.furnaceFlame === key) child.visible = flameOn;
+            });
+        }
 
         // Update TSO flow-direction arrow rotation
         if (key.startsWith('TSO_')) {
@@ -5040,12 +5059,30 @@
         // --- CCR-knapp ---
         const ccrDiv = document.getElementById('seq-ccr-action');
         const timerDiv = document.getElementById('seq-timer-display');
+        const pvWaitDiv = document.getElementById('seq-pv-wait-display');
         if (step.action.type === 'furnace_ccr') {
             document.getElementById('seq-ccr-message').textContent = step.action.ccrMessage || 'Bekräfta med CCR.';
             document.getElementById('btn-ccr-confirm').textContent = step.action.buttonLabel || '📻 Bekräftat av CCR';
             ccrDiv.style.display = 'block';
         } else {
             ccrDiv.style.display = 'none';
+        }
+
+        // --- PV wait ---
+        if (step.action.type === 'furnace_wait_pv') {
+            pvWaitStepStartTime = Date.now();
+            pvWaitDiv.style.display = 'block';
+            // Initial content; tickProcessEngine will update it live
+            const pvDef = PV_DEFINITIONS.find(d => d.key === step.action.pvKey);
+            const unit = pvDef ? (pvDef.unit || '') : (step.action.pvUnit || '');
+            const decimals = pvDef ? pvDef.decimals : 2;
+            const curVal = pvState[step.action.pvKey] ?? 0;
+            const tgt = step.action.pvMin ?? step.action.pvMax;
+            const label = step.action.pvLabel || (pvDef ? pvDef.label : step.action.pvKey);
+            pvWaitDiv.textContent = `📊 ${label}: ${curVal.toFixed(decimals)} ${unit} → mål: ≥ ${tgt} ${unit}`;
+        } else {
+            pvWaitDiv.style.display = 'none';
+            pvWaitStepStartTime = null;
         }
 
         // --- Timer ---
@@ -5188,6 +5225,17 @@
                 // Validerar att minst action.duration sekunder passerat sedan timern startades
                 if (!furnaceTimerStart) return false;
                 return (Date.now() - furnaceTimerStart) >= (action.duration * 1000);
+            }
+
+            case 'furnace_wait_pv': {
+                // Minsta visningstid (standard 8 s) — ger studenten tid att läsa live-värdet
+                const minMs = (action.minDisplaySec ?? 8) * 1000;
+                if (!pvWaitStepStartTime || (Date.now() - pvWaitStepStartTime) < minMs) return false;
+                // Auto-advances when pvState[pvKey] reaches threshold
+                const val = pvState[action.pvKey] ?? 0;
+                if (action.pvMin != null && val < action.pvMin) return false;
+                if (action.pvMax != null && val > action.pvMax) return false;
+                return true;
             }
 
             default:
@@ -5552,6 +5600,23 @@
         }
 
         updateInstrumentPanel();
+
+        // Uppdatera PV-wait display i sekvens-panelen (live)
+        if (activeSequence && !sequenceCompleted) {
+            const curStep = activeSequence.steps[sequenceStepIndex];
+            if (curStep && curStep.action.type === 'furnace_wait_pv') {
+                const pvWaitEl = document.getElementById('seq-pv-wait-display');
+                if (pvWaitEl) {
+                    const pvDef = PV_DEFINITIONS.find(d => d.key === curStep.action.pvKey);
+                    const unit = pvDef ? (pvDef.unit || '') : (curStep.action.pvUnit || '');
+                    const decimals = pvDef ? pvDef.decimals : 2;
+                    const val = pvState[curStep.action.pvKey] ?? 0;
+                    const tgt = curStep.action.pvMin ?? curStep.action.pvMax;
+                    const label = curStep.action.pvLabel || (pvDef ? pvDef.label : curStep.action.pvKey);
+                    pvWaitEl.textContent = `📊 ${label}: ${val.toFixed(decimals)} ${unit} → mål: ≥ ${tgt} ${unit}`;
+                }
+            }
+        }
     }
 
     function buildInstrumentPanel() {

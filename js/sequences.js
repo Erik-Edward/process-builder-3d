@@ -663,9 +663,14 @@ const FURNACE_SCENARIOS = {
                 action: { type: 'furnace_ccr', componentType: 'furnace_training', ccrKey: 'CCR_PRESSURIZE_A', updatesState: { TSO_AA: 'open' }, ccrMessage: 'Be CCR öppna TSO_AA till specificerat trycksättningstryck. Vänta på bekräftelse att trycket är stabilt.', interlock: { key: 'PILOT_A', requiredState: 'lit', failMessage: 'PILOT_A ej tänd — tänd piloten innan TSO_AA öppnas' } }
             },
             {
+                instruction: '[FAS 3] Vänta — trycksättning sektion A (FUEL_PRESSURE ≥ 0.20 bar g)',
+                detail: 'TSO_AA är nu öppnad av CCR. Vänta tills bränsleledningens tryck stabiliserat sig till minst 0.20 bar g innan brännarna öppnas. Steget avanceras automatiskt — följ instrumentpanelen.',
+                action: { type: 'furnace_wait_pv', pvKey: 'FUEL_PRESSURE', pvMin: 0.20, pvLabel: 'Bränslegastryck', pvUnit: 'bar g' }
+            },
+            {
                 instruction: '[FAS 3] Öppna brännare A1 (KIKV_A1)',
                 detail: 'Öppna kikventil KIKV_A1 för att tända brännare 1 i sektion A. Klicka på KIKV_A1.',
-                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A1', targetState: 'open' }
+                action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'KIKV_A1', targetState: 'open', interlock: { pvKey: 'FUEL_PRESSURE', pvMin: 0.05, failMessage: 'Bränslegastryck för lågt — vänta tills trycket ≥ 0.05 bar g (se instrumentpanelen)' } }
             },
             {
                 instruction: '[FAS 3] Öppna brännare A2 (KIKV_A2)',

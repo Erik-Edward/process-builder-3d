@@ -668,6 +668,56 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 - `undoLastWaypoint()`: tar bort senaste segment och pil
 - `cleanupPipeDrawing()`: tar bort alla segment och pilar
 
+### Session 16 – Fas C Iteration 1: Funktionell Instrumentering + Interlock A+B + Flammor
+
+#### Fas C Iteration 1 — processEngine och instrumentpanel
+- **`PV_DEFINITIONS`** — 4 processvärden: FUEL_PRESSURE (bar g), CHAMBER_TEMP (°C), FLUE_DRAFT (mmH₂O), FLAME_DETECT (status)
+- **`processEngineInterval`** — 500 ms `setInterval`-loop (`tickProcessEngine`) aktiveras vid scenariostart
+- **`computePVTargets(fs)`** — mappar `furnaceState` → målvärden (TSO_AA öppen → 0.40 bar, KIKV-räkning → temp, FLUE_DAMPER → ugnsdrag, PILOT_A → flamdetektion)
+- **`tickProcessEngine()`** — rampar `pvState` mot mål med `PV_RAMP`, kontrollerar larmgränser (H/L)
+- **`#instrument-panel`** — HTML-overlay (höger om sekvens-panelen): visar 4 PV-rader med värde, stapeldiagram och blink-larm
+- **`buildInstrumentPanel()`** / **`updateInstrumentPanel()`** — genererar och uppdaterar PV-rader
+- **`showInterlockMessage(msg)`** — röd interlock-text i instrumentpanelen (4 s), anropas vid blockerat steg
+- **CCR-interlock (state-baserat):** `step.action.interlock.key/requiredState` kontrolleras i CCR-handler innan bekräftelse godtas (t.ex. PILOT_A måste vara 'lit' innan TSO_AA öppnas)
+
+#### Interlock A+B — PV-baserade interlocks + `furnace_wait_pv`-stegstyp
+
+**Option A — PV-interlock på `furnace_interact`-steg:**
+- `handleFurnaceElementClick`: nytt block kontrollerar `action.interlock.pvKey/pvMin/pvMax` innan interaktionen utförs
+- Om `pvState[pvKey] < pvMin` → `showInterlockMessage()` + blockera; studenten kan inte öppna KIKV_A1 förrän trycket stigit
+- KIKV_A1 fick `interlock: { pvKey: 'FUEL_PRESSURE', pvMin: 0.05, failMessage: '...' }`
+
+**Option B — `furnace_wait_pv`-stegstyp (auto-advance):**
+- `validateStepAction`: nytt `case 'furnace_wait_pv'` — returnerar `true` när `pvState[pvKey] >= pvMin`
+- **Minsta visningstid:** `pvWaitStepStartTime` sätts i `updateSequenceUI`; steget avancerar ej förrän `minDisplaySec` (standard 8 s) passerat — ger studenten tid att läsa live-värdet
+- **`PV_RAMP.FUEL_PRESSURE`:** 0.05 → 0.02 — trycket stiger nu på ~10 s istf. ~2 s (mer realistisk rampning)
+- **`#seq-pv-wait-display`** — ljusblå ruta i sekvens-panelen: visar live `"Bränslegastryck: X.XX bar g → mål: ≥ 0.20 bar g"`, uppdateras var 500 ms via `tickProcessEngine`
+- `updateSequenceUI`: döljer CCR/timer-divs och visar PV-wait display för `furnace_wait_pv`-steg
+- **Nytt sekvens-steg:** Vänta på trycksättning (FUEL_PRESSURE ≥ 0.20 bar g) infogat mellan TSO_AA CCR och KIKV_A1
+
+#### Visuell flamfeedback — pilot och brännare
+
+**Pilot (`PILOT_A/B/C`):**
+- `ConeGeometry(0.022, 0.22)` placerad vid `(PILOT_X, LIFT+0.13, PILOT_Z)` — ovanför tändhuvudet
+- Material: gul-orange, `emissiveIntensity: 1.8`, transparent (0.90), `depthWrite: false`
+- `userData.furnaceFlame = 'PILOT_X'` — separat från `furnaceKey` (påverkas inte av färgbytelogik)
+- `visible: false` initialt — `updateFurnaceElementVisual` sätter `visible = (state === 'lit')`
+
+**Brännare (`BURNER_X1–X6` per sektion — 6×3 = 18 positioner):**
+- **Yttre kon:** `ConeGeometry(0.078, 0.60)`, orange, `emissiveIntensity: 1.4`, opacity 0.82
+- **Inre kon:** `ConeGeometry(0.038, 0.50)`, gul-vit, `emissiveIntensity: 2.2`, opacity 0.92
+- Position: `(xOff, LIFT+0.40, BZ[b])` — stiger upp inuti brännarmuren
+- `userData.furnaceFlame = 'BURNER_Xn'` — `updateFurnaceElementVisual` togglar `visible` när `state === true`
+- `comp.mesh.traverse` i `updateFurnaceElementVisual` söker `furnaceFlame`-nyckel efter färgblocket
+
+#### Processtubbar — riktningsändring
+- **Förut:** 5 tubar per sektion längs X-axeln (tvärs mot brännare-raden)
+- **Nu:** 5 tubar per sektion längs Z-axeln — parallellt med brännare-raden (BZ-riktning)
+- X-positioner: `[xOff±0.90, xOff±0.45, xOff]`, längd FD−0.4 = 3.6 m (täcker hela brännardepth)
+- Samlingsmanifolder längs X vid front- och bakkant (`mz = ±(FD/2−0.25)`) istf. front-to-back
+
+---
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil

@@ -5390,22 +5390,23 @@ const COMPONENT_DEFINITIONS = {
                 group.add(lSprite);
 
                 // ── Process radiant tubes near ceiling (purely visual) ─────
+                // Tubes run along Z-axis, parallel to the burner row (BZ direction)
                 const tubeY = LIFT + FH - 0.22;  // 4.98
-                for (const tz of [-1.4, -0.7, 0, 0.7, 1.4]) {
+                for (const tx of [xOff - 0.90, xOff - 0.45, xOff, xOff + 0.45, xOff + 0.90]) {
                     const tube = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.04, 0.04, 2.2, 8), tubeMat
+                        new THREE.CylinderGeometry(0.04, 0.04, FD - 0.4, 8), tubeMat
                     );
-                    tube.rotation.z = Math.PI / 2;  // align along x-axis
-                    tube.position.set(xOff, tubeY, tz);
+                    tube.rotation.x = Math.PI / 2;  // align along z-axis
+                    tube.position.set(tx, tubeY, 0);
                     group.add(tube);
                 }
-                // Front-to-back manifolds connecting the tubes at section edges
-                for (const mx of [xOff - 1.08, xOff + 1.08]) {
+                // Collection manifolds at front and back edges (along X-axis)
+                for (const mz of [-(FD / 2 - 0.25), FD / 2 - 0.25]) {
                     const manifold = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.05, 0.05, FD - 0.5, 8), tubeMat
+                        new THREE.CylinderGeometry(0.05, 0.05, 2.0, 8), tubeMat
                     );
-                    manifold.rotation.x = Math.PI / 2;  // align along z-axis
-                    manifold.position.set(mx, tubeY, 0);
+                    manifold.rotation.z = Math.PI / 2;  // align along x-axis
+                    manifold.position.set(xOff, tubeY, mz);
                     group.add(manifold);
                 }
 
@@ -5493,6 +5494,19 @@ const COMPONENT_DEFINITIONS = {
                 igHead.position.set(PILOT_X, LIFT - 0.02, PILOT_Z);
                 igHead.userData.furnaceKey = `PILOT_${sec}`;
                 group.add(igHead);
+
+                // ── Pilot flame — visas enbart när PILOT_X = 'lit' ─────────
+                const pilotFlame = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.022, 0.22, 8),
+                    new THREE.MeshStandardMaterial({
+                        color: 0xffdd00, emissive: 0xff8800, emissiveIntensity: 1.8,
+                        transparent: true, opacity: 0.90, depthWrite: false
+                    })
+                );
+                pilotFlame.position.set(PILOT_X, LIFT + 0.13, PILOT_Z);
+                pilotFlame.visible = false;
+                pilotFlame.userData.furnaceFlame = `PILOT_${sec}`;
+                group.add(pilotFlame);
 
                 // Gaskoppling (lådan vid sondstaven, i nivå med gasoltubens ventil)
                 const COUPLING_Y = 0.42;  // matchar toppen av gasventilen (y=0.39+0.03)
@@ -5810,6 +5824,35 @@ const COMPONENT_DEFINITIONS = {
                     cap.rotation.x = -Math.PI / 2;
                     cap.position.set(xOff, LIFT + RING_H, bz);
                     group.add(cap);
+                }
+
+                // ── Burner flames — visas enbart när BURNER_XN = true ─────
+                for (let b = 0; b < 6; b++) {
+                    const bKey = `BURNER_${sec}${b + 1}`;
+                    // Outer flame (orange, wider)
+                    const outerFlame = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.078, 0.60, 8),
+                        new THREE.MeshStandardMaterial({
+                            color: 0xff6600, emissive: 0xff3300, emissiveIntensity: 1.4,
+                            transparent: true, opacity: 0.82, depthWrite: false
+                        })
+                    );
+                    outerFlame.position.set(xOff, LIFT + 0.40, BZ[b]);
+                    outerFlame.visible = false;
+                    outerFlame.userData.furnaceFlame = bKey;
+                    group.add(outerFlame);
+                    // Inner flame (yellow-white, narrower, brighter)
+                    const innerFlame = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.038, 0.50, 8),
+                        new THREE.MeshStandardMaterial({
+                            color: 0xffee44, emissive: 0xffdd00, emissiveIntensity: 2.2,
+                            transparent: true, opacity: 0.92, depthWrite: false
+                        })
+                    );
+                    innerFlame.position.set(xOff, LIFT + 0.36, BZ[b]);
+                    innerFlame.visible = false;
+                    innerFlame.userData.furnaceFlame = bKey;
+                    group.add(innerFlame);
                 }
 
                 // Feed pipes (6 per section) — each is the clickable "burner" element

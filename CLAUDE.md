@@ -72,7 +72,7 @@ process-builder-3d/
 │   ├── media.js               # 31 mediatyper (färg, fas, faroklass)
 │   ├── pid-export.js          # P&ID-export till SVG
 │   └── sequences.js           # Uppstartssekvenser + guidade byggövningar
-│                              # + FURNACE_SCENARIOS (ugnsläromodul, 52 steg)
+│                              # + FURNACE_SCENARIOS (ugnsläromodul, 26 steg)
 ├── process description/       # Processbeskrivningar som referensmaterial
 ├── TRAINING_MODULE.md         # Dokumentation: ugnsläromodulens design och status
 └── data/
