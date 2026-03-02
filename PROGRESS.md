@@ -732,6 +732,26 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 
 ---
 
+### Session 18 – Luftregister: centrering, dubbla vred och permanenta färgband
+
+#### Luftregisterboxar centrerade på brännaren
+- **Tidigare:** `AIR_DX=0.90` offset placerade registren vid sidan om brännarmuren (snett monterade)
+- **Nu:** Boxar centrerade direkt ovanpå brännarmuren vid `(xOff, LIFT-0.065, BZ[b])` och `(xOff, LIFT-0.165, BZ[b])` — korrekt position framför luftintag
+
+#### Dubbla vred (SEC + PRIM)
+- **Sekundärvred (SEC):** CylinderGeometry arm + SphereGeometry knopp vid `(xOff-BOX_W/2-VR_ARM/2, LIFT-0.065, bz)` — roteras 90° (rotation.z = π/2)
+- **Primärvred (PRIM):** Samma geometri vid LIFT-0.165 — kontroll av primärluft
+- Vreden har `vrKnobMat` (mörkgrå), armen `regFrMat` (blågrå)
+- Båda vreden identifierar sig med respektive sections `furnaceKey` (SEC_AIR / PRIM_AIR)
+
+#### Permanenta färgband för identifiering
+- **Problem:** `updateFurnaceElementVisual` skriver över materialfärg (röd/grön) vilket omöjliggör teckenkodning med boxfärg
+- **Lösning:** Separata `secBandMat` (cyan `#26c6da`) och `primBandMat` (lila `#ce93d8`) på tunna ramsmeshar runt varje box — **inga `furnaceKey`** på banden → opåverkade av tillståndslogiken
+- Banden är permanent synliga oavsett ventilläge — studenten kan alltid se vilken box som är sek. resp. primär
+- Boxkropparna (med furnaceKey) ändrar fortfarande färg (röd=stängd, grön=öppen) som tidigare
+
+---
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil
