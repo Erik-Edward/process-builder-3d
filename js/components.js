@@ -5410,59 +5410,89 @@ const COMPONENT_DEFINITIONS = {
                     group.add(manifold);
                 }
 
-                // ── Underside air register boxes — one PRIM+SEC package BESIDE each burner ──
-                // Box sits at x = xOff + AIR_DX (moved to the RIGHT to clear the burner/pilot area)
-                // Two stacked boxes: SEC_AIR (upper) + PRIM_AIR (lower), divided by a plate
-                const AIR_DX    = 0.90;  // x-offset from burner feed pipe centre (moved right)
+                // ── Underside air register boxes — centered on each burner (pipe through centre) ──
+                // Brännarsond går rakt upp genom mitten av lådan (se skiss).
+                // Two stacked boxes: SEC_AIR (upper) + PRIM_AIR (lower), divided by a plate.
+                // "Vred till spjäll" — justeringshandtag sticker ut på vänster (-x) sida.
                 const regFrMat  = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.8 });
-                const BOX_W     = 0.18;  // width in x
-                const BOX_D     = 0.13;  // depth in z
+                const vrKnobMat = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.6 });
+                // Fasta färgband — påverkas EJ av updateFurnaceElementVisual (inget furnaceKey)
+                const secBandMat  = new THREE.MeshStandardMaterial({ color: 0x26c6da, roughness: 0.5 }); // cyan — sekundärluft
+                const primBandMat = new THREE.MeshStandardMaterial({ color: 0xce93d8, roughness: 0.5 }); // lila — primärluft
+                const BOX_W     = 0.28;  // width in x (centered on burner)
+                const BOX_D     = 0.28;  // depth in z (centered on burner, square)
                 const BOX_H     = 0.09;  // height of each section
+                const VR_ARM    = 0.10;  // vred arm length
+                const BAND_H    = 0.024; // bandets höjd — sticker ut på alla 4 sidor
                 for (let b = 0; b < 6; b++) {
                     const bz = BZ[b];
-                    const rx = xOff + AIR_DX;
-
-                    // Thin mounting bracket from firebox floor to register assembly
-                    const bracket = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.05, 0.04, 0.05), regFrMat
-                    );
-                    bracket.position.set(rx, LIFT - 0.02, bz);
-                    group.add(bracket);
 
                     // SEC_AIR box (upper section, closer to firebox floor)
                     const secBox = new THREE.Mesh(
                         new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), airMat.clone()
                     );
-                    secBox.position.set(rx, LIFT - 0.065, bz);
+                    secBox.position.set(xOff, LIFT - 0.065, bz);
                     secBox.userData.furnaceKey = `SEC_AIR_${sec}`;
                     group.add(secBox);
-                    // Louver detail — thin horizontal slit across SEC box face
+                    // Louver detail — thin horizontal slit
                     const secLouver = new THREE.Mesh(
                         new THREE.BoxGeometry(BOX_W + 0.01, 0.012, BOX_D + 0.01), regFrMat
                     );
-                    secLouver.position.set(rx, LIFT - 0.065, bz);
+                    secLouver.position.set(xOff, LIFT - 0.065, bz);
                     group.add(secLouver);
+                    // Cyan färgband runt SEC-boxen (inget furnaceKey — permanent cyan)
+                    const secBand = new THREE.Mesh(
+                        new THREE.BoxGeometry(BOX_W + 0.03, BAND_H, BOX_D + 0.03), secBandMat
+                    );
+                    secBand.position.set(xOff, LIFT - 0.065, bz);
+                    group.add(secBand);
+                    // SEC vred — i höjd med SEC-boxen
+                    const secVrArm = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.010, 0.010, VR_ARM, 6), regFrMat
+                    );
+                    secVrArm.rotation.z = Math.PI / 2;
+                    secVrArm.position.set(xOff - BOX_W / 2 - VR_ARM / 2, LIFT - 0.065, bz);
+                    group.add(secVrArm);
+                    const secVrKnob = new THREE.Mesh(new THREE.SphereGeometry(0.020, 8, 6), vrKnobMat);
+                    secVrKnob.position.set(xOff - BOX_W / 2 - VR_ARM, LIFT - 0.065, bz);
+                    group.add(secVrKnob);
 
                     // Divider plate separating SEC from PRIM
                     const divPlate = new THREE.Mesh(
                         new THREE.BoxGeometry(BOX_W + 0.02, 0.014, BOX_D + 0.02), regFrMat
                     );
-                    divPlate.position.set(rx, LIFT - 0.115, bz);
+                    divPlate.position.set(xOff, LIFT - 0.115, bz);
                     group.add(divPlate);
 
                     // PRIM_AIR box (lower section, below SEC_AIR)
                     const primBox = new THREE.Mesh(
                         new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), airMat.clone()
                     );
-                    primBox.position.set(rx, LIFT - 0.165, bz);
+                    primBox.position.set(xOff, LIFT - 0.165, bz);
                     primBox.userData.furnaceKey = `PRIM_AIR_${sec}`;
                     group.add(primBox);
-                    // Louver detail — thin horizontal slit across PRIM box face
+                    // Louver detail
                     const primLouver = new THREE.Mesh(
                         new THREE.BoxGeometry(BOX_W + 0.01, 0.012, BOX_D + 0.01), regFrMat
                     );
-                    primLouver.position.set(rx, LIFT - 0.165, bz);
+                    primLouver.position.set(xOff, LIFT - 0.165, bz);
                     group.add(primLouver);
+                    // Lila färgband runt PRIM-boxen (inget furnaceKey — permanent lila)
+                    const primBand = new THREE.Mesh(
+                        new THREE.BoxGeometry(BOX_W + 0.03, BAND_H, BOX_D + 0.03), primBandMat
+                    );
+                    primBand.position.set(xOff, LIFT - 0.165, bz);
+                    group.add(primBand);
+                    // PRIM vred — i höjd med PRIM-boxen
+                    const primVrArm = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.010, 0.010, VR_ARM, 6), regFrMat
+                    );
+                    primVrArm.rotation.z = Math.PI / 2;
+                    primVrArm.position.set(xOff - BOX_W / 2 - VR_ARM / 2, LIFT - 0.165, bz);
+                    group.add(primVrArm);
+                    const primVrKnob = new THREE.Mesh(new THREE.SphereGeometry(0.020, 8, 6), vrKnobMat);
+                    primVrKnob.position.set(xOff - BOX_W / 2 - VR_ARM, LIFT - 0.165, bz);
+                    group.add(primVrKnob);
                 }
 
                 // ── PILOT — Fristående portabel tändbrännare (gasoltube + sond) ──────
