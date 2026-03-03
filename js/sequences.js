@@ -561,7 +561,7 @@ const FURNACE_SCENARIOS = {
         preload: {
             components: [
                 { type: 'furnace_training', id: 1, x: 0,  z: 0, rotation: 0 },
-                { type: 'v_xxx4_drum',      id: 2, x: 6.5, z: 2.1, rotation: 0 }
+                { type: 'v_xxx4_drum',      id: 2, x: 6.5, z: 2.8, rotation: 0 }
             ],
             pipes: []
         },
@@ -649,7 +649,7 @@ const FURNACE_SCENARIOS = {
             },
             {
                 instruction: '[FAS 3] Öppna BLEED-ventil sektion A (lufta bränslegas)',
-                detail: 'Öppna BLEED_A-ventilen på sektionens distributionsledning för att lufta ut eventuell kvarvarande gas. Klicka på BLEED_A (orange kub, bakre änden av sektion A).',
+                detail: 'Öppna Bleed A-ventilen på sektionens distributionsledning för att lufta ut eventuell kvarvarande gas innan brännarna tänds. Klicka på Bleed A-ventilen (orange, vänster ände av sektion A:s bränsleledning).',
                 action: { type: 'furnace_interact', componentType: 'furnace_training', key: 'BLEED_A', targetState: 'open' }
             },
             {

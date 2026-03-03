@@ -3155,6 +3155,14 @@
                 }
             });
         }
+
+        // Rotate KIKV lever: open = horizontal left (rot.z=+PI/2), closed = vertical down (rot.z=0)
+        if (key.startsWith('KIKV_')) {
+            comp.mesh.traverse(child => {
+                if (child.userData.kikvLever !== key) return;
+                child.rotation.z = (state === 'open') ? Math.PI / 2 : 0;
+            });
+        }
     }
 
     // --- Move mode ---

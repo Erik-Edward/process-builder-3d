@@ -752,6 +752,72 @@ Portar med känt media sätts automatiskt utan modal. Komplett lista:
 
 ---
 
+### Session 19 – FAS 2: Bränslegas-distributionsledningar + BLEED-ventil + V-XXX4-anslutning
+
+#### FAS 2 – Individuella KIKV-kretsar (bränslegas från TSO → brännare)
+
+**Koncept:** Varje KIKV-ventil (18 st totalt) har nu en dedikerad in- och utledning.
+Ingen delad ledning – varje krets är helt separat synlig från alla kameravinklar.
+
+**Inloppskretsar (TSO-base → x-manifold → KIKV-inlet):**
+- Z-lateraler r=0.028 från TSO-basen (xOff±BRANCH_DX, SUB_Y, HDR_Z) → z=KZ
+- X-manifold r=0.028 längs x-axeln vid (SUB_Y, KZ)
+- Rad 0 (A1/A2/A3): rak riser vid z=KZ upp till nedre KIKV-rad
+- Rad 1 (A4/A5/A6): riser vid INNER_Z=KZ−0.08 (indragen 8 cm mot ugnen) + z-konnektorer
+  vid bottom (MAN→INNER_Z) och top (INNER_Z→KZ, tillbaka till KIKV-inloppsstubben)
+  → inre riser = övre KIKV, yttre riser = nedre KIKV, tydligt åtskiljda
+
+**Utloppskretsar (KIKV-outlet → brännare feed-pipe):**
+- `OUTLET_DX=0.23`, `OUT_X_OFF=0.10`: Rad 0 path x=kx+0.23, Rad 1 path x=kx+0.33
+- `CLEAR_Y=[1.20, 1.40]`: Rad 0 kör vid y=1.20, Rad 1 vid y=1.40 → aldrig visuellt delade
+- Seg A: vertikalt dropp från ky → cY vid (px, KZ)
+- Seg B: z-körning vid cY från z=KZ → brännar-z (bzP)
+- Seg C: kortare dropp från cY → SUB_Y vid bzP
+- Seg D: x-körning vid SUB_Y från px → xOff (feed-pipe bas)
+
+**Pilotledning omlokaliserad:**
+- PILOT_X: xOff−0.08 → xOff+0.08 (höger om grey pipe)
+- BOTTLE_X: xOff−0.45 → xOff+0.45 (gasolflaskan moved till +x-sidan)
+- Undviker kollision med A1:s Seg D x-körning vid z=−1.5
+
+#### Rörböjsfyllning – SphereGeometry vid alla 90°-böjar
+
+`addCorner(x, y, z, r)` helper-funktion som lägger till `SphereGeometry(r, 6, 4)` vid varje
+böjpunkt för att eliminera visuella glapp mellan vinkelräta cylindrar:
+
+- **Inlopp rad 1:** `(inX, SUB_Y, INNER_Z)` och `(inX, ky, INNER_Z)` per KIKV (r=0.022)
+  + `(inX, ky, KZ)` vid KIKV-inloppsstubbens möte med topz-konnektorn
+- **Utlopp alla rader:** `(px,ky,KZ)`, `(px,cY,KZ)`, `(px,cY,bzP)`, `(px,SUB_Y,bzP)` (r=0.022)
+  + `(xOff,SUB_Y,bzP)` vid Seg D:s möte med feed-pipe (r=0.022)
+- **Z-lateraler:** `(xOff±BRANCH_DX, SUB_Y, KZ)` vid mötet med x-manifolden (r=0.028)
+
+#### BLEED-ventil åter-implementerad per sektion
+
+Placering: vänster ände av x-manifolden (MAN_L), 0.30 m stub åt vänster.
+
+- Horisontell stub r=0.028, 0.30 m (samma r som manifolden)
+- Ventilkropp (orange box 0.14×0.14×0.14) — klickbar `furnaceKey = BLEED_A/B/C`
+- Bonnett (cylinder 0.030r, 0.12h) + handhjul (disc 0.075r) — klickbara
+- Ventilationsrör (grå, r=0.022, 0.40h) + flared cap — indikerar vent till atmosfär
+- Sprite-etikett "Bleed A/B/C" ovanför ventilen (canvas 80×32, skala 0.30×0.12)
+- Steg 15-instruktionstext uppdaterad: klartextbeskrivning utan tekniska nycklar
+
+#### V-XXX4-anslutning fixad (fuelStub borttagen + drum omlokaliserad)
+
+- **Problem:** Två parallella gula rör synliga (ett "flytande") — `fuelStub` vid z=2.8
+  och drum-nozzeln vid z=2.1 (0.7 m z-gap). Olika z-nivåer → aldrig anslutna.
+- **Fix 1:** `fuelStub` borttagen från furnace_training
+- **Fix 2:** `fuelHdr` förlängd FW+0.4 → FW+0.5 (8.0 m) — når world x=4.0
+- **Fix 3:** V-XXX4 preload-position z: 2.1 → 2.8 — drum-nozzeln (lokal z=0)
+  hamnar nu på world z=2.8, exakt på fuelHdr-nivå. Nozzels vänstra ände (world x=4.0)
+  möter fuelHdr:s högra ände (x=4.0) — sömlös anslutning.
+
+#### KIKV-spak-animation (main.js)
+- `updateFurnaceElementVisual`: ny logik för `KIKV_*`-nycklar
+- `userData.kikvLever === key` → `rotation.z = PI/2` (öppen = horisontell) eller `0` (stängd = nedåt)
+
+---
+
 ### Övriga framtida förbättringar
 - Fristående ångturbin (driver pump/generator)
 - Fler ventiltyper: butterfly, membran, nålventil
