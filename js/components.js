@@ -6637,5 +6637,251 @@ const COMPONENT_DEFINITIONS = {
 
             return group;
         }
+    },
+
+    vc_furnace: {
+        type: 'furnace',
+        subtype: 'vertical_cylindrical',
+        name: 'Vertikal cylinderugn',
+        icon: '🔥',
+        category: 'Ugnar',
+        description: 'Vertikal cylindrisk processugn (VC fired heater) för råoljeuppvärmning och vakuumdestillation',
+        ports: {
+            feed_in:     { position: [1.35, 2.1, 0],   direction: [1, 0, 0],  type: 'liquid_in'  },
+            product_out: { position: [-1.35, 4.5, 0],  direction: [-1, 0, 0], type: 'liquid_out' },
+            fuel_in:     { position: [0, 2.0, 1.35],   direction: [0, 0, 1],  type: 'liquid_in',  defaultMedia: 'fuel_gas' }
+        },
+        parameters: {
+            duty:     { value: 30,  unit: 'MW',  label: 'Termisk effekt' },
+            temp_in:  { value: 200, unit: '°C',  label: 'Processtemperatur in' },
+            temp_out: { value: 370, unit: '°C',  label: 'Processtemperatur ut' },
+            pressure: { value: 15,  unit: 'bar', label: 'Driftstryck' },
+            burners:  { value: 4,   unit: 'st',  label: 'Antal brännare' }
+        },
+        color: 0x8d6e63,
+        buildMesh(THREE) {
+            const group = new THREE.Group();
+
+            const LIFT   = 1.5;
+            const FBOX_R = 1.1;
+            const FBOX_H = 3.5;
+            const CONE_H = 0.7;
+            const CONV_R = 0.65;
+            const CONV_H = 1.4;
+            const STACK_R = 0.22;
+            const STACK_H = 2.0;
+
+            const shellMat   = new THREE.MeshStandardMaterial({ color: 0x8d6e63 });
+            const insulation = new THREE.MeshStandardMaterial({ color: 0xbcaaa4 });
+            const steelMat   = new THREE.MeshStandardMaterial({ color: 0x78909c });
+
+            const nozzleMat  = new THREE.MeshStandardMaterial({ color: 0x607d8b });
+
+            // --- Bottenplatta (foundation flange) ---
+            const base = new THREE.Mesh(
+                new THREE.CylinderGeometry(FBOX_R + 0.25, FBOX_R + 0.25, 0.08, 16),
+                steelMat
+            );
+            base.position.set(0, 0.04, 0);
+            group.add(base);
+
+            // --- Stödkjol (conical skirt) ---
+            const skirt = new THREE.Mesh(
+                new THREE.CylinderGeometry(FBOX_R + 0.05, FBOX_R + 0.15, LIFT, 16, 1, true),
+                shellMat
+            );
+            skirt.position.set(0, LIFT / 2, 0);
+            group.add(skirt);
+
+            // --- Eldstad / Firebox ---
+            const fboxY = LIFT + FBOX_H / 2;
+            const firebox = new THREE.Mesh(
+                new THREE.CylinderGeometry(FBOX_R, FBOX_R, FBOX_H, 24),
+                shellMat
+            );
+            firebox.position.set(0, fboxY, 0);
+            group.add(firebox);
+
+            // Isoleringsband (3 horisontella ringar vid 25/50/75% höjd)
+            for (const frac of [0.25, 0.5, 0.75]) {
+                const band = new THREE.Mesh(
+                    new THREE.CylinderGeometry(FBOX_R + 0.03, FBOX_R + 0.03, 0.06, 16),
+                    insulation
+                );
+                band.position.set(0, LIFT + FBOX_H * frac, 0);
+                group.add(band);
+            }
+
+            // --- Konisk övergång ---
+            const coneY = LIFT + FBOX_H + CONE_H / 2;
+            const cone = new THREE.Mesh(
+                new THREE.CylinderGeometry(CONV_R, FBOX_R, CONE_H, 20),
+                shellMat
+            );
+            cone.position.set(0, coneY, 0);
+            group.add(cone);
+
+            // --- Konvektionssektion ---
+            const convY = LIFT + FBOX_H + CONE_H + CONV_H / 2;
+            const conv = new THREE.Mesh(
+                new THREE.CylinderGeometry(CONV_R, CONV_R, CONV_H, 20),
+                shellMat
+            );
+            conv.position.set(0, convY, 0);
+            group.add(conv);
+
+            // Konvektionssektion isoleringsband
+            const convBand = new THREE.Mesh(
+                new THREE.CylinderGeometry(CONV_R + 0.03, CONV_R + 0.03, 0.05, 16),
+                insulation
+            );
+            convBand.position.set(0, LIFT + FBOX_H + CONE_H + CONV_H * 0.5, 0);
+            group.add(convBand);
+
+            // --- Stack ---
+            const stackY = LIFT + FBOX_H + CONE_H + CONV_H + STACK_H / 2;
+            const stack = new THREE.Mesh(
+                new THREE.CylinderGeometry(STACK_R, STACK_R + 0.04, STACK_H, 12),
+                steelMat
+            );
+            stack.position.set(0, stackY, 0);
+            group.add(stack);
+
+            // Stackflöns (topp)
+            const stackFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(STACK_R + 0.06, STACK_R + 0.06, 0.05, 12),
+                steelMat
+            );
+            stackFlange.position.set(0, LIFT + FBOX_H + CONE_H + CONV_H + STACK_H - 0.025, 0);
+            group.add(stackFlange);
+
+
+            // --- Peepholes / Inspektionsluckor (4 st vid 60% höjd) ---
+            // Pivot-grupp per lucka: local +X pekar radiellt utåt (pivot.rotation.y = -angle)
+            // Geometri i local space: torus-ram + orange täcklucka + siktrör + glasände
+            const peepY = LIFT + FBOX_H * 0.6;
+            const peepDoorMat = new THREE.MeshStandardMaterial({ color: 0xe65100 }); // djuporange
+            const peepGlassMat = new THREE.MeshStandardMaterial({
+                color: 0x111111, emissive: 0x332200, emissiveIntensity: 0.8,
+                transparent: true, opacity: 0.75
+            });
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
+                // Ry(θ)(1,0,0) = (cos θ, 0, -sin θ). För local +X → (cos(a),0,sin(a)): θ = -a
+                const pivot = new THREE.Group();
+                pivot.position.set(0, peepY, 0);
+                pivot.rotation.y = -angle;
+
+                // Yttre flänsring (torus, hål mot local +X = utåt)
+                // TorusGeometry hål pekar +Z; Ry(PI/2) → +Z roteras till +X
+                const frame = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.115, 0.022, 8, 16),
+                    steelMat
+                );
+                frame.rotation.y = Math.PI / 2;
+                frame.position.set(FBOX_R + 0.005, 0, 0);
+                pivot.add(frame);
+
+                // Täcklucka (orange, CylinderGeometry Y-axel → local +X via Rz(-PI/2))
+                const cover = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.095, 0.095, 0.04, 12),
+                    peepDoorMat
+                );
+                cover.rotation.z = -Math.PI / 2;
+                cover.position.set(FBOX_R + 0.045, 0, 0);
+                pivot.add(cover);
+
+                // Siktrör (stål)
+                const barrel = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.045, 0.045, 0.14, 10),
+                    steelMat
+                );
+                barrel.rotation.z = -Math.PI / 2;
+                barrel.position.set(FBOX_R + 0.12, 0, 0);
+                pivot.add(barrel);
+
+                // Glasände (mörk, svagt lysande = inuti ugnen)
+                const glass = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.038, 0.038, 0.015, 10),
+                    peepGlassMat
+                );
+                glass.rotation.z = -Math.PI / 2;
+                glass.position.set(FBOX_R + 0.195, 0, 0);
+                pivot.add(glass);
+
+                group.add(pivot);
+            }
+
+            // --- Matningsstuts (feed_in) — +x sida, y=LIFT+0.6 ---
+            const feedY = LIFT + 0.6;  // = 2.1
+            const feedNozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.10, 0.10, 0.25, 10),
+                nozzleMat
+            );
+            feedNozzle.rotation.z = Math.PI / 2;
+            feedNozzle.position.set(FBOX_R + 0.125, feedY, 0);
+            group.add(feedNozzle);
+            const feedFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.145, 0.145, 0.04, 10),
+                nozzleMat
+            );
+            feedFlange.rotation.z = Math.PI / 2;
+            feedFlange.position.set(FBOX_R + 0.265, feedY, 0);
+            group.add(feedFlange);
+
+            // --- Produktstuts (product_out) — -x sida, y=LIFT+FBOX_H-0.5 ---
+            const prodY = LIFT + FBOX_H - 0.5;  // = 4.5
+            const prodNozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.10, 0.10, 0.25, 10),
+                nozzleMat
+            );
+            prodNozzle.rotation.z = Math.PI / 2;
+            prodNozzle.position.set(-(FBOX_R + 0.125), prodY, 0);
+            group.add(prodNozzle);
+            const prodFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.145, 0.145, 0.04, 10),
+                nozzleMat
+            );
+            prodFlange.rotation.z = Math.PI / 2;
+            prodFlange.position.set(-(FBOX_R + 0.265), prodY, 0);
+            group.add(prodFlange);
+
+            // --- Bränngasstuts (fuel_in) — +z sida vid brännarnnivå ---
+            // Rx(PI/2) mappar CylinderGeometry Y-axel → +Z
+            const fuelY = LIFT + 0.5;  // = 2.0, strax ovanför brännarna
+            const fuelNozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.25, 10),
+                nozzleMat
+            );
+            fuelNozzle.rotation.x = Math.PI / 2;
+            fuelNozzle.position.set(0, fuelY, FBOX_R + 0.125);
+            group.add(fuelNozzle);
+            const fuelFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.115, 0.115, 0.04, 10),
+                nozzleMat
+            );
+            fuelFlange.rotation.x = Math.PI / 2;
+            fuelFlange.position.set(0, fuelY, FBOX_R + 0.265);
+            group.add(fuelFlange);
+
+            // --- Manway (horisontell stuts på konvektionssektionen) ---
+            const manwayY = LIFT + FBOX_H + CONE_H + CONV_H * 0.5;
+            const manway = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.14, 0.14, 0.14, 10),
+                nozzleMat
+            );
+            manway.rotation.z = Math.PI / 2;
+            manway.position.set(CONV_R + 0.07, manwayY, 0);
+            group.add(manway);
+            const manwayFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.19, 0.19, 0.04, 10),
+                nozzleMat
+            );
+            manwayFlange.rotation.z = Math.PI / 2;
+            manwayFlange.position.set(CONV_R + 0.15, manwayY, 0);
+            group.add(manwayFlange);
+
+            return group;
+        }
     }
 };
