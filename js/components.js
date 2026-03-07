@@ -13,8 +13,10 @@ const COMPONENT_DEFINITIONS = {
         category: 'Pumpar',
         description: 'Standard centrifugalpump',
         ports: {
-            inlet:  { position: [-0.6, 0, 0], direction: [-1, 0, 0], type: 'liquid_in' },
-            outlet: { position: [0.6, 0, 0],  direction: [1, 0, 0],  type: 'liquid_out' }
+            // Sugledning: horisontell in från höger (+x)
+            inlet:  { position: [0.685, 0.08, 0], direction: [1, 0, 0], type: 'liquid_in' },
+            // Tryckladning: vertikalt upp (+y) från volutens topp
+            outlet: { position: [0.37, 0.60, 0],  direction: [0, 1, 0], type: 'liquid_out' }
         },
         parameters: {
             flowRate: { value: 100, unit: 'm\u00b3/h', label: 'Fl\u00f6de' },
@@ -24,29 +26,136 @@ const COMPONENT_DEFINITIONS = {
         color: 0x4fc3f7,
         buildMesh(THREE) {
             const group = new THREE.Group();
-            // Pump body - cylinder
-            const body = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.35, 0.35, 0.5, 24),
-                new THREE.MeshStandardMaterial({ color: this.color })
+
+            const SY = 0.08;  // shaft centre Y (keeps volute bottom above baseplate)
+
+            const motorMat  = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.7 });
+            const coupMat   = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.6 });
+            const voluteMat = new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.5 });
+            const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x607d8b, roughness: 0.5 });
+            const baseMat   = new THREE.MeshStandardMaterial({ color: 0x424242, roughness: 0.8 });
+
+            // ── Baseplate ──────────────────────────────────────────────────
+            const base = new THREE.Mesh(
+                new THREE.BoxGeometry(1.38, 0.06, 0.52), baseMat
             );
-            body.rotation.z = Math.PI / 2;
-            group.add(body);
-            // Inlet pipe
-            const inlet = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.1, 0.1, 0.3, 12),
-                new THREE.MeshStandardMaterial({ color: 0x78909c })
+            base.position.set(0, -0.22, 0);
+            group.add(base);
+
+            // ── Elmotor (vänster, axel längs x) ───────────────────────────
+            const motor = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.20, 0.20, 0.48, 16), motorMat.clone()
             );
-            inlet.rotation.z = Math.PI / 2;
-            inlet.position.set(-0.5, 0, 0);
-            group.add(inlet);
-            // Outlet pipe
-            const outlet = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.1, 0.1, 0.3, 12),
-                new THREE.MeshStandardMaterial({ color: 0x78909c })
+            motor.rotation.z = Math.PI / 2;
+            motor.position.set(-0.31, SY, 0);
+            group.add(motor);
+
+            // Fläkthus (bakre locket, lätt avsmalnande)
+            const fanHousing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.17, 0.20, 0.06, 16), motorMat.clone()
             );
-            outlet.rotation.z = Math.PI / 2;
-            outlet.position.set(0.5, 0, 0);
-            group.add(outlet);
+            fanHousing.rotation.z = Math.PI / 2;
+            fanHousing.position.set(-0.58, SY, 0);
+            group.add(fanHousing);
+
+            // Fläkt (mörk skiva bakom fläkthuset)
+            const fan = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.14, 0.14, 0.02, 12),
+                new THREE.MeshStandardMaterial({ color: 0x263238 })
+            );
+            fan.rotation.z = Math.PI / 2;
+            fan.position.set(-0.625, SY, 0);
+            group.add(fan);
+
+            // Kopplingslåda (ovanpå motorn)
+            const jBox = new THREE.Mesh(
+                new THREE.BoxGeometry(0.13, 0.07, 0.13), motorMat.clone()
+            );
+            jBox.position.set(-0.31, SY + 0.225, 0);
+            group.add(jBox);
+
+            // Motorfötter (2 st, hål mellan motorns undersida och basplattan)
+            [-0.14, 0.14].forEach(dz => {
+                const foot = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.12, 0.07, 0.07), motorMat.clone()
+                );
+                foot.position.set(-0.31, -0.155, dz);
+                group.add(foot);
+            });
+
+            // ── Koppling (mellan motor och lager) ──────────────────────────
+            const coupling = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.09, 0.09, 0.14, 12), coupMat.clone()
+            );
+            coupling.rotation.z = Math.PI / 2;
+            coupling.position.set(-0.02, SY, 0);
+            group.add(coupling);
+
+            // ── Lagerhus + lagerplint ──────────────────────────────────────
+            const bearing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.12, 0.14, 12), coupMat.clone()
+            );
+            bearing.rotation.z = Math.PI / 2;
+            bearing.position.set(0.17, SY, 0);
+            group.add(bearing);
+
+            // Lagerplint (stöd från basplattan upp till lagerhuset)
+            const pedH = SY + 0.19;  // 0.27 m, från basplatteyta till axelcentrum
+            const pedestal = new THREE.Mesh(
+                new THREE.BoxGeometry(0.14, pedH, 0.16), coupMat.clone()
+            );
+            pedestal.position.set(0.17, -0.19 + pedH / 2, 0);
+            group.add(pedestal);
+
+            // ── Pumphus / volut ────────────────────────────────────────────
+            const volute = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.26, 0.26, 0.18, 16), voluteMat.clone()
+            );
+            volute.rotation.z = Math.PI / 2;
+            volute.position.set(0.37, SY, 0);
+            group.add(volute);
+
+            // Volutens frontring (lodrät, synlig från sidan)
+            const vRing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.27, 0.27, 0.02, 16),
+                new THREE.MeshStandardMaterial({ color: 0x546e7a })
+            );
+            vRing.rotation.z = Math.PI / 2;
+            vRing.position.set(0.465, SY, 0);
+            group.add(vRing);
+
+            // ── Sugstuts (horisontell, +x från volutens högra yta) ─────────
+            // Volutens högra yta: x = 0.37 + 0.09 = 0.46
+            // Stuts: 0.46 → 0.655 (längd 0.195), flänsskiva 0.655 → 0.685
+            const suctNozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.085, 0.085, 0.195, 12), nozzleMat.clone()
+            );
+            suctNozzle.rotation.z = Math.PI / 2;
+            suctNozzle.position.set(0.558, SY, 0);
+            group.add(suctNozzle);
+
+            const suctFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.115, 0.115, 0.03, 12), nozzleMat.clone()
+            );
+            suctFlange.rotation.z = Math.PI / 2;
+            suctFlange.position.set(0.670, SY, 0);
+            group.add(suctFlange);
+
+            // ── Tryckstuds (vertikal, +y från volutens topp) ───────────────
+            // Volutens topp: y = SY + 0.26 = 0.34
+            // Stuts: 0.34 → 0.57 (längd 0.23), flänsskiva 0.57 → 0.60
+            const discNozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.085, 0.085, 0.23, 12), nozzleMat.clone()
+            );
+            discNozzle.position.set(0.37, SY + 0.26 + 0.115, 0);
+            group.add(discNozzle);
+
+            const discFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.115, 0.115, 0.03, 12), nozzleMat.clone()
+            );
+            discFlange.position.set(0.37, SY + 0.26 + 0.23 + 0.015, 0);
+            group.add(discFlange);
+
             return group;
         }
     },
@@ -120,59 +229,177 @@ const COMPONENT_DEFINITIONS = {
         category: 'Pumpar',
         description: 'Centrifugalkompressor för gas',
         ports: {
-            suction:   { position: [0, 0.5, 0],    direction: [0, 1, 0],  type: 'liquid_in' },
-            discharge: { position: [0.55, -0.2, 0], direction: [1, 0, 0],  type: 'liquid_out' }
+            // Sugledning: axiell, horisontellt in från höger (+x)
+            suction:   { position: [1.25, 0.10, 0], direction: [1, 0, 0],  type: 'liquid_in' },
+            // Tryckladning: radial, vertikalt upp (+y) från kåpan
+            discharge: { position: [0.55, 0.59, 0], direction: [0, 1, 0],  type: 'liquid_out' }
         },
         parameters: {
-            flowRate:    { value: 5000, unit: 'Nm³/h', label: 'Flöde' },
-            pressureIn:  { value: 1,    unit: 'bar',   label: 'Tryck in' },
-            pressureOut: { value: 8,    unit: 'bar',   label: 'Tryck ut' },
-            power:       { value: 250,  unit: 'kW',    label: 'Effekt' }
+            flowRate:    { value: 5000, unit: 'Nm\u00b3/h', label: 'Fl\u00f6de' },
+            pressureIn:  { value: 1,    unit: 'bar',        label: 'Tryck in' },
+            pressureOut: { value: 8,    unit: 'bar',        label: 'Tryck ut' },
+            power:       { value: 250,  unit: 'kW',         label: 'Effekt' }
         },
         color: 0x42a5f5,
         buildMesh(THREE) {
             const group = new THREE.Group();
-            // Compressor body (horizontal cylinder)
-            const body = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.4, 0.4, 0.6, 24),
-                new THREE.MeshStandardMaterial({ color: this.color })
-            );
-            body.rotation.z = Math.PI / 2;
-            group.add(body);
-            // Fin rings (3 rings around the body)
-            const finMat = new THREE.MeshStandardMaterial({ color: 0x90caf9 });
-            for (let i = -1; i <= 1; i++) {
-                const fin = new THREE.Mesh(
-                    new THREE.TorusGeometry(0.42, 0.025, 8, 24),
-                    finMat
-                );
-                fin.rotation.y = Math.PI / 2;
-                fin.position.x = i * 0.18;
-                group.add(fin);
-            }
-            // Suction nozzle (top)
-            const nMat = new THREE.MeshStandardMaterial({ color: 0x78909c });
-            const suctionN = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.12, 0.12, 0.2, 12),
-                nMat
-            );
-            suctionN.position.set(0, 0.5, 0);
-            group.add(suctionN);
-            // Discharge nozzle (side, lower)
-            const dischargeN = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.1, 0.1, 0.2, 12),
-                nMat
-            );
-            dischargeN.rotation.z = Math.PI / 2;
-            dischargeN.position.set(0.45, -0.2, 0);
-            group.add(dischargeN);
-            // Base plate
+
+            const SY = 0.10;  // shaft centre Y
+
+            const motorMat  = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.7 });
+            const gearMat   = new THREE.MeshStandardMaterial({ color: 0x455a64, roughness: 0.6 });
+            const barrelMat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.5 });
+            const flangeMat = new THREE.MeshStandardMaterial({ color: 0x607d8b, roughness: 0.5 });
+            const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.5 });
+            const baseMat   = new THREE.MeshStandardMaterial({ color: 0x424242, roughness: 0.8 });
+
+            // ── Basplatta ──────────────────────────────────────────────────
+            // Täcker hela aggregattåget från motor till kåpa
             const base = new THREE.Mesh(
-                new THREE.BoxGeometry(0.7, 0.05, 0.5),
-                new THREE.MeshStandardMaterial({ color: 0x455a64 })
+                new THREE.BoxGeometry(1.92, 0.06, 0.62), baseMat
             );
-            base.position.y = -0.35;
+            base.position.set(0.08, -0.28, 0);
             group.add(base);
+
+            // ── Elmotor (vänster, axel längs x) ───────────────────────────
+            const motor = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.22, 0.54, 16), motorMat.clone()
+            );
+            motor.rotation.z = Math.PI / 2;
+            motor.position.set(-0.52, SY, 0);
+            group.add(motor);  // x: -0.79 till -0.25
+
+            // Fläkthus (bakre locket)
+            const fanHousing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.18, 0.22, 0.06, 16), motorMat.clone()
+            );
+            fanHousing.rotation.z = Math.PI / 2;
+            fanHousing.position.set(-0.82, SY, 0);
+            group.add(fanHousing);
+
+            // Fläktskiva
+            const fan = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.15, 0.02, 12),
+                new THREE.MeshStandardMaterial({ color: 0x263238 })
+            );
+            fan.rotation.z = Math.PI / 2;
+            fan.position.set(-0.865, SY, 0);
+            group.add(fan);
+
+            // Kopplingslåda ovanpå motorn
+            const jBox = new THREE.Mesh(
+                new THREE.BoxGeometry(0.14, 0.08, 0.14), motorMat.clone()
+            );
+            jBox.position.set(-0.52, SY + 0.265, 0);
+            group.add(jBox);
+
+            // Motorfötter (2 st)
+            [-0.17, 0.17].forEach(dz => {
+                const foot = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.14, 0.13, 0.08), motorMat.clone()
+                );
+                foot.position.set(-0.52, -0.195, dz);
+                group.add(foot);
+            });
+
+            // ── Koppling motor → växellåda ─────────────────────────────────
+            const mCouple = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.08, 12), gearMat.clone()
+            );
+            mCouple.rotation.z = Math.PI / 2;
+            mCouple.position.set(-0.17, SY, 0);
+            group.add(mCouple);
+
+            // ── Växellåda / speed increaser ────────────────────────────────
+            const gearbox = new THREE.Mesh(
+                new THREE.BoxGeometry(0.28, 0.36, 0.30), gearMat.clone()
+            );
+            gearbox.position.set(0.02, SY - 0.02, 0);
+            group.add(gearbox);
+
+            // Växellådslock (lätt markeringsskiftning)
+            const gearLid = new THREE.Mesh(
+                new THREE.BoxGeometry(0.26, 0.04, 0.28),
+                new THREE.MeshStandardMaterial({ color: 0x546e7a })
+            );
+            gearLid.position.set(0.02, SY + 0.18, 0);
+            group.add(gearLid);
+
+            // ── Koppling växellåda → kompressorkåpa ────────────────────────
+            const cCouple = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.08, 12), gearMat.clone()
+            );
+            cCouple.rotation.z = Math.PI / 2;
+            cCouple.position.set(0.22, SY, 0);
+            group.add(cCouple);
+
+            // ── Kompressorkåpa (barrel, r=0.24, l=0.70) ───────────────────
+            // x: 0.26 till 0.96
+            const barrel = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.24, 0.24, 0.70, 16), barrelMat.clone()
+            );
+            barrel.rotation.z = Math.PI / 2;
+            barrel.position.set(0.61, SY, 0);
+            group.add(barrel);
+
+            // Stegflänsar (4 st — indikerar impellersteg längs kåpan)
+            [0.40, 0.54, 0.68, 0.82].forEach(fx => {
+                const flange = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.256, 0.256, 0.028, 16), flangeMat.clone()
+                );
+                flange.rotation.z = Math.PI / 2;
+                flange.position.set(fx, SY, 0);
+                group.add(flange);
+            });
+
+            // Vänster lagerhus (driver end)
+            const lBear = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.17, 0.17, 0.07, 16), flangeMat.clone()
+            );
+            lBear.rotation.z = Math.PI / 2;
+            lBear.position.set(0.225, SY, 0);
+            group.add(lBear);
+
+            // Höger lagerhus (suction end)
+            const rBear = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.17, 0.17, 0.07, 16), flangeMat.clone()
+            );
+            rBear.rotation.z = Math.PI / 2;
+            rBear.position.set(1.005, SY, 0);
+            group.add(rBear);
+
+            // ── Sugstuts (axiell, +x från höger lagerhus) ─────────────────
+            // Höger lagerhusets högra yta: 1.005 + 0.035 = 1.04
+            // Stuts: 1.04 → 1.22 (l=0.18), flänsskiva: 1.22 → 1.25
+            const suctNozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.10, 0.10, 0.18, 12), nozzleMat.clone()
+            );
+            suctNozzle.rotation.z = Math.PI / 2;
+            suctNozzle.position.set(1.13, SY, 0);
+            group.add(suctNozzle);
+
+            const suctFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.135, 0.135, 0.03, 12), nozzleMat.clone()
+            );
+            suctFlange.rotation.z = Math.PI / 2;
+            suctFlange.position.set(1.235, SY, 0);   // face at x=1.25
+            group.add(suctFlange);
+
+            // ── Tryckstuds (radial, +y vid 2:a flanssteg x=0.54) ──────────
+            // Kåpans topp: SY + 0.24 = 0.34
+            // Stuts l=0.22: 0.34 → 0.56, flänsskiva: 0.56 → 0.59
+            const discNozzle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.09, 0.09, 0.22, 12), nozzleMat.clone()
+            );
+            discNozzle.position.set(0.55, SY + 0.24 + 0.11, 0);   // center y=0.45
+            group.add(discNozzle);
+
+            const discFlange = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.125, 0.125, 0.03, 12), nozzleMat.clone()
+            );
+            discFlange.position.set(0.55, SY + 0.24 + 0.22 + 0.015, 0);  // center y=0.575
+            group.add(discFlange);
+
             return group;
         }
     },
@@ -3687,67 +3914,232 @@ const COMPONENT_DEFINITIONS = {
         category: 'Pumpar',
         description: 'Kolvkompressor (reciprocerande) för gasservice',
         ports: {
-            suction:   { position: [0, 0.55, 0],    direction: [0, 1, 0],  type: 'liquid_in' },
-            discharge: { position: [0.55, -0.1, 0],  direction: [1, 0, 0],  type: 'liquid_out' }
+            // Sugsida: ovanifrån på varje cylinder (LIFT=0.65, y = 0.65+0.22+0.22+0.03 = 1.12)
+            suction_fl:   { position: [-0.56, 1.12,  0.70], direction: [0,  1, 0], type: 'liquid_in' },
+            suction_fr:   { position: [ 0.56, 1.12,  0.70], direction: [0,  1, 0], type: 'liquid_in' },
+            suction_bl:   { position: [-0.56, 1.12, -0.70], direction: [0,  1, 0], type: 'liquid_in' },
+            suction_br:   { position: [ 0.56, 1.12, -0.70], direction: [0,  1, 0], type: 'liquid_in' },
+            // Trycksida: underifrån på varje cylinder (y = 0.65-0.22-0.18-0.03 = 0.22)
+            // Riktning horisontellt utåt (±Z) så att rörledningar inte går under grid-golvet
+            discharge_fl: { position: [-0.56, 0.22,  0.70], direction: [0, 0,  1], type: 'liquid_out' },
+            discharge_fr: { position: [ 0.56, 0.22,  0.70], direction: [0, 0,  1], type: 'liquid_out' },
+            discharge_bl: { position: [-0.56, 0.22, -0.70], direction: [0, 0, -1], type: 'liquid_out' },
+            discharge_br: { position: [ 0.56, 0.22, -0.70], direction: [0, 0, -1], type: 'liquid_out' }
         },
         parameters: {
-            flowRate:    { value: 2000, unit: 'Nm³/h', label: 'Flöde' },
-            pressureIn:  { value: 3,    unit: 'bar',   label: 'Sugtryck' },
-            pressureOut: { value: 30,   unit: 'bar',   label: 'Utloppstryck' },
-            power:       { value: 500,  unit: 'kW',    label: 'Effekt' },
-            cylinders:   { value: 2,    unit: 'st',    label: 'Antal cylindrar' }
+            flowRate:    { value: 2000, unit: 'Nm\u00b3/h', label: 'Fl\u00f6de' },
+            pressureIn:  { value: 3,    unit: 'bar',        label: 'Sugtryck' },
+            pressureOut: { value: 30,   unit: 'bar',        label: 'Utloppstryck' },
+            power:       { value: 500,  unit: 'kW',         label: 'Effekt' },
+            cylinders:   { value: 4,    unit: 'st',         label: 'Antal cylindrar' }
         },
         color: 0x5c6bc0,
         buildMesh(THREE) {
             const group = new THREE.Group();
-            // Crankcase (main rectangular body)
+
+            // Horisontellt motstående ("boxer") kolvkompressor — skalad upp för ventilutrymme
+            // Vevhus längs X-axeln. Cylindrar sticker ut i ±Z-riktning (framsida/baksida).
+            const CC_L  = 2.00;   // vevhusets längd (x)
+            const CC_HH = 0.26;   // vevhusets halvhöjd
+            const CC_HD = 0.24;   // vevhusets halvdjup (z), face vid ±0.24
+            const DP_L  = 0.20;   // mellanstyckets djup (z)
+            const CYL_R = 0.22;   // cylindrarnas radien (uppskalad för att ge plats till ventiler)
+            const CYL_L = 0.52;   // cylindrarnas djup (z-axeln)
+            // Cylinderns center-z: vevhus z-face + mellanstycke + halv cylinderlängd
+            const CZ    = CC_HD + DP_L + CYL_L / 2;   // = 0.24 + 0.20 + 0.26 = 0.70
+            const CX    = [-0.56, +0.56];   // x-positioner för de 2 kolvkasten
+
+            // Ventilkåpe-parametrar (4 ställdon per cylinder, vid ±45° i XY-planet)
+            // Vinklar (clockwise från +Y): 1:30, 10:30, 4:30, 7:30
+            const VTHETAS = [Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, -3 * Math.PI / 4];
+            const STEM_R  = 0.060;   // stuts-radien
+            const STEM_L  = 0.14;    // stutsens längd (radiellt)
+            const VDISC_R = 0.095;   // ventilkåpans radien
+            const VDISC_H = 0.065;   // ventilkåpans tjocklek
+
+            // LIFT: höjer hela maskinen så att tryckstutsens botten ≥ y=0.22
+            const LIFT    = 0.65;
+            const FRAME_H = LIFT - CC_HH;   // 0.39 — rambalkarnas höjd
+
+            const frameMat  = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.7 });
+            const cylMat    = new THREE.MeshStandardMaterial({ color: 0x455a64, roughness: 0.6 });
+            const headMat   = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.5 });
+            const motorMat  = new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.7 });
+            const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x78909c, roughness: 0.5 });
+            const baseMat   = new THREE.MeshStandardMaterial({ color: 0x424242, roughness: 0.8 });
+
+            // ── Strukturram (ersätter flat basplatta) ──────────────────────
+            // 2 längsgående rambalklar längs z-kanterna på vevhuset
+            [-CC_HD, +CC_HD].forEach(rz => {
+                const beam = new THREE.Mesh(
+                    new THREE.BoxGeometry(CC_L + 0.24, FRAME_H, 0.08), baseMat.clone()
+                );
+                beam.position.set(0, FRAME_H / 2, rz);
+                group.add(beam);
+            });
+            // Motorbärblock
+            const mSupport = new THREE.Mesh(
+                new THREE.BoxGeometry(0.60, FRAME_H, 0.50), baseMat.clone()
+            );
+            mSupport.position.set(-1.34, FRAME_H / 2, 0);
+            group.add(mSupport);
+            // Tvärbalk vid motor-vevhus-skarven
+            const xBeam = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, FRAME_H, CC_HD * 2 + 0.16), baseMat.clone()
+            );
+            xBeam.position.set(-1.06, FRAME_H / 2, 0);
+            group.add(xBeam);
+
+            // ── Vevhus (centralt rektangulärt block) ──────────────────────
             const crankcase = new THREE.Mesh(
-                new THREE.BoxGeometry(0.8, 0.5, 0.5),
-                new THREE.MeshStandardMaterial({ color: this.color })
+                new THREE.BoxGeometry(CC_L, CC_HH * 2, CC_HD * 2), frameMat.clone()
             );
+            crankcase.position.set(0, LIFT, 0);
             group.add(crankcase);
-            // Cylinders (two vertical cylinders on top)
-            const cylMat = new THREE.MeshStandardMaterial({ color: 0x7986cb });
-            for (const x of [-0.2, 0.2]) {
-                const cyl = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.12, 0.12, 0.35, 16),
-                    cylMat
+
+            // Inspektionsluckor på vevhusets topp (3 fastskruvade lock)
+            [-0.60, 0, +0.60].forEach(dx => {
+                const hatch = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.28, 0.05, 0.16), headMat.clone()
                 );
-                cyl.position.set(x, 0.42, 0);
-                group.add(cyl);
-                // Cylinder head
-                const head = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.14, 0.14, 0.06, 16),
-                    new THREE.MeshStandardMaterial({ color: 0x9fa8da })
+                hatch.position.set(dx, LIFT + CC_HH + 0.025, 0);
+                group.add(hatch);
+            });
+
+            // ── Cylindrar + mellanstycken + ventiler (4 st: 2 kast × 2 sidor) ──
+            CX.forEach(cx => {
+                [+CZ, -CZ].forEach(cz => {
+                    const sign = Math.sign(cz);
+
+                    // Mellanstycke (kopplar vevhus till cylindern)
+                    const dp = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.34, 0.38, DP_L), headMat.clone()
+                    );
+                    dp.position.set(cx, LIFT, (CC_HD + DP_L / 2) * sign);
+                    group.add(dp);
+
+                    // Cylinderkropp (längs z-axeln)
+                    const cyl = new THREE.Mesh(
+                        new THREE.CylinderGeometry(CYL_R, CYL_R, CYL_L, 22), cylMat.clone()
+                    );
+                    cyl.rotation.x = Math.PI / 2;
+                    cyl.position.set(cx, LIFT, cz);
+                    group.add(cyl);
+
+                    // Cylinderändlock (stor bultad fläns, karaktäristisk för kolvkompressorer)
+                    const cap = new THREE.Mesh(
+                        new THREE.CylinderGeometry(CYL_R + 0.03, CYL_R + 0.03, 0.065, 22),
+                        headMat.clone()
+                    );
+                    cap.rotation.x = Math.PI / 2;
+                    cap.position.set(cx, LIFT, cz + sign * (CYL_L / 2 + 0.032));
+                    group.add(cap);
+
+                    // ── 4 Ventilkåpor (ställdon) vid ±45° i XY-planet ─────────────
+                    // Placerade vid 1:30, 10:30, 4:30 och 7:30 på en urtavla
+                    // rotation.z = -theta mappar Y-axeln till (sin(θ), cos(θ)) = radialriktningen
+                    VTHETAS.forEach(theta => {
+                        const dx = Math.sin(theta);   // x-komponent av radialriktning
+                        const dy = Math.cos(theta);   // y-komponent av radialriktning
+                        const rotZ = -theta;          // Three.js-rotation runt Z för att peka radiellt
+
+                        // Stuts (kort cylinderbit från cylinderyta till ventilkåpa)
+                        const stemDist = CYL_R + STEM_L / 2;
+                        const stem = new THREE.Mesh(
+                            new THREE.CylinderGeometry(STEM_R, STEM_R, STEM_L, 10), headMat.clone()
+                        );
+                        stem.rotation.z = rotZ;
+                        stem.position.set(cx + dx * stemDist, LIFT + dy * stemDist, cz);
+                        group.add(stem);
+
+                        // Ventilkåpa (rund disc, representerar ställdonets huv)
+                        const discDist = CYL_R + STEM_L + VDISC_H / 2;
+                        const vdisc = new THREE.Mesh(
+                            new THREE.CylinderGeometry(VDISC_R, VDISC_R, VDISC_H, 14), nozzleMat.clone()
+                        );
+                        vdisc.rotation.z = rotZ;
+                        vdisc.position.set(cx + dx * discDist, LIFT + dy * discDist, cz);
+                        group.add(vdisc);
+                    });
+
+                    // ── Sugstuts (centralt på cylinderns topp, uppåt) ──────────────
+                    // Cylinder top y = LIFT + CYL_R = 0.87, stuts center = 0.98, fläns top = 1.12
+                    const sNoz = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.085, 0.085, 0.22, 10), nozzleMat.clone()
+                    );
+                    sNoz.position.set(cx, LIFT + CYL_R + 0.11, cz);
+                    group.add(sNoz);
+                    const sFln = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.125, 0.125, 0.03, 12), nozzleMat.clone()
+                    );
+                    sFln.position.set(cx, LIFT + CYL_R + 0.22 + 0.015, cz);
+                    group.add(sFln);
+
+                    // ── Tryckstuds (centralt på cylinderns botten, nedåt) ──────────
+                    // Cylinder bottom y = LIFT - CYL_R = 0.43, studs center = 0.34, fläns bottom = 0.22
+                    const dNoz = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.075, 0.075, 0.18, 10), nozzleMat.clone()
+                    );
+                    dNoz.position.set(cx, LIFT - (CYL_R + 0.09), cz);
+                    group.add(dNoz);
+                    const dFln = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.115, 0.115, 0.03, 12), nozzleMat.clone()
+                    );
+                    dFln.position.set(cx, LIFT - (CYL_R + 0.18 + 0.015), cz);
+                    group.add(dFln);
+                    // Cylindrar är konsoler från vevhuset — inga separata cylinderfötter
+                });
+            });
+
+            // ── Koppling vevhus → motor ────────────────────────────────────
+            const couple = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.10, 0.10, 0.06, 12), headMat.clone()
+            );
+            couple.rotation.z = Math.PI / 2;
+            couple.position.set(-1.03, LIFT, 0);
+            group.add(couple);
+
+            // ── Elmotor (vänster ände, axel längs x) ──────────────────────
+            const motor = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.22, 0.22, 0.56, 16), motorMat.clone()
+            );
+            motor.rotation.z = Math.PI / 2;
+            motor.position.set(-1.34, LIFT, 0);
+            group.add(motor);
+
+            // Fläkthus
+            const fanHousing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.18, 0.22, 0.07, 16), motorMat.clone()
+            );
+            fanHousing.rotation.z = Math.PI / 2;
+            fanHousing.position.set(-1.655, LIFT, 0);
+            group.add(fanHousing);
+
+            // Fläktskiva
+            const fan = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.17, 0.17, 0.02, 12),
+                new THREE.MeshStandardMaterial({ color: 0x263238 })
+            );
+            fan.rotation.z = Math.PI / 2;
+            fan.position.set(-1.71, LIFT, 0);
+            group.add(fan);
+
+            // Kopplingslåda ovanpå motorn
+            const jBox = new THREE.Mesh(
+                new THREE.BoxGeometry(0.16, 0.09, 0.16), motorMat.clone()
+            );
+            jBox.position.set(-1.34, LIFT + 0.27, 0);
+            group.add(jBox);
+
+            // Motorfötter (ingår i motorbärblocket, synliga som flansar)
+            [-0.19, 0.19].forEach(dz => {
+                const foot = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.18, 0.06, 0.10), motorMat.clone()
                 );
-                head.position.set(x, 0.62, 0);
-                group.add(head);
-            }
-            // Suction nozzle (top, between cylinders)
-            const nMat = new THREE.MeshStandardMaterial({ color: 0x78909c });
-            const nSuc = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.15, 8), nMat);
-            nSuc.position.set(0, 0.58, 0);
-            group.add(nSuc);
-            // Discharge nozzle (side, lower)
-            const nDis = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 8), nMat);
-            nDis.rotation.z = Math.PI / 2;
-            nDis.position.set(0.5, -0.1, 0);
-            group.add(nDis);
-            // Flywheel (on the side)
-            const flywheel = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.2, 0.2, 0.04, 24),
-                new THREE.MeshStandardMaterial({ color: 0x455a64 })
-            );
-            flywheel.rotation.x = Math.PI / 2;
-            flywheel.position.set(0, 0, 0.3);
-            group.add(flywheel);
-            // Base plate
-            const base = new THREE.Mesh(
-                new THREE.BoxGeometry(0.9, 0.06, 0.6),
-                new THREE.MeshStandardMaterial({ color: 0x455a64 })
-            );
-            base.position.y = -0.28;
-            group.add(base);
+                foot.position.set(-1.34, LIFT - CC_HH - 0.03, dz);
+                group.add(foot);
+            });
+
             return group;
         }
     },
