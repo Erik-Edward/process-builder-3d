@@ -532,6 +532,172 @@ const GUIDED_EXERCISES = {
                 action: { type: 'verify_flow' }
             }
         ]
+    },
+
+    hds_build: {
+        name: 'Bensinavsvavlingsanläggning (HDS)',
+        description: 'Bygg en komplett naftaavsvavlingsanläggning (HDS) — från inkommande satsning till avsvavlad helbensin. Inkluderar koalescer, feed/effluent-värmeväxling, reaktorn R-XXX1, separatortåg och stabiliseringskolumnen C-XXX1.',
+        icon: '⚗',
+        difficulty: 'Svår',
+        isExercise: true,
+        steps: [
+
+            // ═══════════════════════════════════════════════════
+            // DEL 1 — PLACERING  (steg 1–10)
+            // ═══════════════════════════════════════════════════
+
+            {
+                instruction: 'Placera två batterigränser (intag)',
+                detail: 'Satsningen (straight-run bensin från 1500/1600-anläggningen) och vätgasen (H₂ make-up från 300/1800-anläggningen) anländer via varsin batterigräns. Placera två "Batterigräns Intag" på arbetsytan.',
+                action: { type: 'place_component', componentType: 'battery_limit_in', minCount: 2 },
+                hint: 'Hitta "Batterigräns Intag" under kategorin "System". Placera dem åtskilda — en för satsning, en för H₂.'
+            },
+            {
+                instruction: 'Placera koalescern SXXX1',
+                detail: 'Koalescer SXXX1 separerar vatten från satsningen direkt vid anläggningsgränsen. Vatten i satsningen skadar katalysatorn i reaktorn och måste avlägsnas.',
+                action: { type: 'place_component', componentType: 'coalescer', minCount: 1 },
+                hint: 'Hitta "Koalescer" under kategorin "Separering". Placera den nära satsningsbatterigränsen.'
+            },
+            {
+                instruction: 'Placera satsningspumpen P-XXX1',
+                detail: 'Centrifugalpumpen P-XXX1 trycker upp satsningen från atmosfäriskt tryck till reaktionstrycket (~30 barg) och driver hela högtrycksloopen framåt.',
+                action: { type: 'place_component', componentType: 'centrifugal_pump', minCount: 1 },
+                hint: 'Hitta "Centrifugalpump" under "Pumpar". Placera den i flödesriktningen efter koalescern.'
+            },
+            {
+                instruction: 'Placera feed/effluent-värmeväxlaren E-XXX1',
+                detail: 'Tubvärmeväxlare E-XXX1 A-E förvärmer den kalla satsningen med den heta effluentströmmen som kommer ut ur reaktorn. Detta är energiintegration — värmen återvinns och minskar bränslebehovet i ugnen.',
+                action: { type: 'place_component', componentType: 'shell_tube_hx', minCount: 1 },
+                hint: 'Hitta "Tubvärmeväxlare" under "Värmeöverföring". Den kopplas in från båda håll: satsning in och effluentretur.'
+            },
+            {
+                instruction: 'Placera laddningsugnen F-XXX1A',
+                detail: 'Ugn F-XXX1A är en självdragsugn som värmer satsningen till ~300°C (straight-run) eller ~285°C (krackad bensin) — den temperatur som krävs för att avsvavlingsreaktionerna ska ske med maximal effektivitet.',
+                action: { type: 'place_component', componentType: 'process_furnace', minCount: 1 },
+                hint: 'Hitta "Processugn" under "Ugnar". Placera den i flödet efter värmeväxlaren.'
+            },
+            {
+                instruction: 'Placera HDS-reaktorn R-XXX1',
+                detail: 'Reaktor R-XXX1 har 17,2 m³ CoMo-katalysator. Svavlet i satsningen reagerar med vätgas och bildar vätesulfid (H₂S). Reaktionen är exoterm — temperaturen stiger längs reaktorn. Rekombinering sker vid ~335°C och måste undvikas.',
+                action: { type: 'place_component', componentType: 'reactor', minCount: 1 },
+                hint: 'Hitta "Reaktor" under "Tankar & Kärl". Placera den direkt efter ugnen.'
+            },
+            {
+                instruction: 'Placera luftkylaren E-XXX2',
+                detail: 'Luftkylare E-XXX2 kyler effluentströmmen från ~90°C (efter HX E-XXX1) till nästan utomhustemperatur med hjälp av en fläkt och fenade tuber. Temperaturen hålls >20°C för att undvika frysning.',
+                action: { type: 'place_component', componentType: 'air_cooler', minCount: 1 },
+                hint: 'Hitta "Luftkylare" under "Värmeöverföring". Placera den i flödet efter värmeväxlaren.'
+            },
+            {
+                instruction: 'Placera två separatorer (HP och LP)',
+                detail: 'Högtrycksseparator V-XXX1 (~30 barg) separerar gas (H₂ + H₂S + lätta kolväten) från vätskefasen. Lågtrycksseparator V-XXX2 (~4,5 barg) frigör ytterligare löst gas och avleder survatten. Placera två "Drum/Ackumulator".',
+                action: { type: 'place_component', componentType: 'drum', minCount: 2 },
+                hint: 'Hitta "Drum/Ackumulator" under "Separering". Placera dem i serie — HP-sep tar emot från luftkylaren, LP-sep tar emot från HP-sep.'
+            },
+            {
+                instruction: 'Placera stabiliseringskolumnen C-XXX1',
+                detail: 'Stripper/stabilisator C-XXX1 avgasar råbensinen — lätta komponenter (butan till metan) separeras från bensinfraktionen under trycket ~15 barg. Bottenprodukt kallas helbensin.',
+                action: { type: 'place_component', componentType: 'stripper_column', minCount: 1 },
+                hint: 'Hitta "Stripper" under "Kolumner". Placera den i flödet efter LP-separatorn.'
+            },
+            {
+                instruction: 'Placera två batterigränser (utlopp)',
+                detail: 'Helbensin (avsvavlad produkt) går till 500/600-anläggningen, och restgaser (sur bränngas, survatten) lämnar anläggningen via sina respektive batterigränser. Placera två "Batterigräns Utlopp".',
+                action: { type: 'place_component', componentType: 'battery_limit_out', minCount: 2 },
+                hint: 'Hitta "Batterigräns Utlopp" under "System". Placera dem vid anläggningens ytterkanter.'
+            },
+
+            // ═══════════════════════════════════════════════════
+            // DEL 2 — KOPPLING  (steg 11–22)
+            // ═══════════════════════════════════════════════════
+
+            {
+                instruction: 'Koppla satsningsbatterigräns → koalescer',
+                detail: 'Satsningsströmmen (straight-run bensin) förs in i koalescer SXXX1 för vattenseparering. Klicka på batterigränsens utport och sedan på koalescerns inport.',
+                action: { type: 'connect_components', fromType: 'battery_limit_in', toType: 'coalescer' },
+                hint: 'Använd den batterigräns som representerar satsningen (ej H₂-sidan).'
+            },
+            {
+                instruction: 'Koppla koalescer → pump P-XXX1',
+                detail: 'Den vattenfria satsningen leds till satsningspumpen P-XXX1 som trycker upp flödet till reaktionstryck.',
+                action: { type: 'connect_components', fromType: 'coalescer', toType: 'centrifugal_pump' }
+            },
+            {
+                instruction: 'Koppla pump → värmeväxlare E-XXX1 (satsningssidan)',
+                detail: 'Det trycksatta satsningsflödet förs in i tubsidan av värmeväxlare E-XXX1 för förvärmning av reaktionseffluentens spillvärme.',
+                action: { type: 'connect_components', fromType: 'centrifugal_pump', toType: 'shell_tube_hx' },
+                hint: 'Koppla pumpens utport till värmeväxlarens inport (tube_in eller liknande).'
+            },
+            {
+                instruction: 'Koppla H₂-batterigräns → värmeväxlare E-XXX1',
+                detail: 'Vätgasen (H₂ make-up) blandas in i satsningsströmmen precis innan värmeväxlaren och bildar en tvåfasström (gas + vätska). Kompressorn driver H₂-återcirkulationen; makeup-gasen tillsätts kontinuerligt.',
+                action: { type: 'connect_components', fromType: 'battery_limit_in', toType: 'shell_tube_hx' },
+                hint: 'Koppla den H₂-batterigräns du placerade i steg 1 till värmeväxlarens inport.'
+            },
+            {
+                instruction: 'Koppla värmeväxlare E-XXX1 → ugn F-XXX1A',
+                detail: 'Den förvärmda satsningen (nu i gasfas tack vare H₂) leds vidare till laddningsugnen F-XXX1A för slutuppvärmning till reaktionstemperatur ~300°C.',
+                action: { type: 'connect_components', fromType: 'shell_tube_hx', toType: 'process_furnace' },
+                hint: 'Koppla värmeväxlarens utport till ugnens inport (charge_in eller inlet).'
+            },
+            {
+                instruction: 'Koppla ugn F-XXX1A → reaktor R-XXX1',
+                detail: 'Satsningen, nu vid ~300°C och ~30 barg, flödar ned genom reaktorn R-XXX1. CoMo-katalysatorn sänker aktiveringsenergin och avsvavlingsreaktionerna sker längs hela reaktorns höjd.',
+                action: { type: 'connect_components', fromType: 'process_furnace', toType: 'reactor' },
+                hint: 'Koppla ugnens utport till reaktorns toppinlopp.'
+            },
+            {
+                instruction: 'Koppla reaktor R-XXX1 → värmeväxlare E-XXX1 (effluentretur)',
+                detail: 'Den heta reaktionseffluentens (H₂ + H₂S + avsvavlad bensin, ~300°C) leds tillbaka till skalssidan av E-XXX1 och ger sin värme till den inkommande kalla satsningen — energiintegration som är avgörande för anläggningens ekonomi.',
+                action: { type: 'connect_components', fromType: 'reactor', toType: 'shell_tube_hx' },
+                hint: 'Det är samma värmeväxlare E-XXX1 som i steg 13 — koppla reaktorns utport till HX:ens andra inport (shell-sidan).'
+            },
+            {
+                instruction: 'Koppla värmeväxlare E-XXX1 → luftkylare E-XXX2',
+                detail: 'Effluenten lämnar HX:en vid ~90°C och måste kylas ytterligare innan separatorn. Luftkylare E-XXX2 kyler strömmen till nära utomhustemperatur med hjälp av forcerad uteluft.',
+                action: { type: 'connect_components', fromType: 'shell_tube_hx', toType: 'air_cooler' },
+                hint: 'Koppla värmeväxlarens (shell-sidans) utport till luftkylarens inport.'
+            },
+            {
+                instruction: 'Koppla luftkylare E-XXX2 → HP-separator V-XXX1',
+                detail: 'Den kylda tvåfasströmmen (~20°C, ~30 barg) flödar in i högtrycksseparatorn V-XXX1 där gas (H₂ + H₂S + lätta HC) separeras från vätskan (avsvavlad råbensin).',
+                action: { type: 'connect_components', fromType: 'air_cooler', toType: 'drum' },
+                hint: 'Koppla luftkylarens utport till den första separatorn (HP-sep V-XXX1).'
+            },
+            {
+                instruction: 'Koppla HP-separator → LP-separator V-XXX2',
+                detail: 'Vätskan (råbensinen) i botten av HP-sep V-XXX1 trycksläpps via en kontrollventil till lågtrycksseparatorn V-XXX2 (~4,5 barg). Löst gas och survatten separeras här.',
+                action: { type: 'connect_components', fromType: 'drum', toType: 'drum' },
+                hint: 'Koppla bottenutloppet på den första separatorn (HP-sep) till inloppet på den andra (LP-sep V-XXX2).'
+            },
+            {
+                instruction: 'Koppla LP-separator V-XXX2 → stabilisator C-XXX1',
+                detail: 'Råbensinen pumpas ur botten av LP-sep och förvärms i värmeväxlare (E-XXX5, E-XXX4, förenklade i denna övning) innan den matas in i stabiliseringskolumnen C-XXX1 mellan botten 24 och 25.',
+                action: { type: 'connect_components', fromType: 'drum', toType: 'stripper_column' },
+                hint: 'Koppla LP-separatorns vätskeutlopp till stabilisatorns matningsinlopp (feed_in).'
+            },
+            {
+                instruction: 'Koppla stabilisator C-XXX1 → produktbatterigräns',
+                detail: 'Bottenprodukt från C-XXX1 är avsvavlad helbensin som satsas vidare till 500/600-anläggningen (lätt fraktion) och 1800-anläggningen (tung fraktion för oktanthöjning). Koppla kolumnens bottenutlopp till en batterigräns utlopp.',
+                action: { type: 'connect_components', fromType: 'stripper_column', toType: 'battery_limit_out' },
+                hint: 'Koppla stabilisatorns bottenutlopp (bottom_out) till en "Batterigräns Utlopp".'
+            },
+
+            // ═══════════════════════════════════════════════════
+            // DEL 3 — SIMULERING  (steg 23–24)
+            // ═══════════════════════════════════════════════════
+
+            {
+                instruction: 'Starta simuleringen',
+                detail: 'Klicka på "Simulera" i verktygsfältet. Alla komponenter aktiveras och flödespartiklarna börjar röra sig genom anläggningen.',
+                action: { type: 'start_simulation' }
+            },
+            {
+                instruction: 'Verifiera flödet genom HDS-anläggningen',
+                detail: 'Kontrollera att partiklar rör sig från satsningsbatterigränsen hela vägen genom: koalescer → pump → HX → ugn → reaktor → HX → luftkylare → separatorer → stabilisator → produktbatterigräns. Grattis — du har byggt en komplett bensinavsvavlingsanläggning!',
+                action: { type: 'verify_flow' }
+            }
+        ]
     }
 };
 
